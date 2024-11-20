@@ -1,4 +1,20 @@
 use crate::token::{Token, TokenKind};
+use miette::{Diagnostic, Error, SourceSpan};
+use thiserror::Error;
+
+// TODO: Move errors into separate file?
+
+#[derive(Debug, Diagnostic, Error)]
+#[error("Unexpected token '{token}'")]
+pub struct SingleTokenError {
+    #[source_code]
+    src: String,
+
+    pub token: char,
+
+    #[label("this character")]
+    err_span: SourceSpan,
+}
 
 pub struct Lexer<'de> {
     /// The input program.
@@ -20,16 +36,17 @@ impl<'de> Lexer<'de> {
 }
 
 impl<'de> Iterator for Lexer<'de> {
-    // TODO: Change this to Result
-    type Item = Token<'de>;
+    type Item = Result<Token<'de>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.position > self.input.len() {
+            // After EOF token is emitted, we "stop" the iterator by returning `None`.
+            // Rust will stop the `for token in lexer {}` loop if `.next()` returns `None`.
             return None;
         }
         if self.rest.is_empty() {
             self.position += 1;
-            return Some(Token::new(TokenKind::Eof, ""));
+            return Some(Ok(Token::new(TokenKind::Eof, "")));
         }
 
         // TODO: Maybe extract this logic into `advance` / `read_char`?
@@ -41,7 +58,7 @@ impl<'de> Iterator for Lexer<'de> {
         self.rest = chars.as_str();
         self.position += ch_len;
 
-        let just = |kind: TokenKind| Some(Token::new(kind, ch_str));
+        let just = |kind: TokenKind| Some(Ok(Token::new(kind, ch_str)));
 
         match ch {
             '(' => just(TokenKind::LeftParen),
@@ -55,20 +72,27 @@ impl<'de> Iterator for Lexer<'de> {
             '-' => just(TokenKind::Minus),
             '*' => just(TokenKind::Star),
             '/' => just(TokenKind::Slash),
-            _ => todo!("Handle unknown token"),
+            c => Some(Err(SingleTokenError {
+                src: self.input.to_string(),
+                token: c,
+                err_span: (self.position - ch_len, ch_len).into(), // (offset, length)
+            }
+            .into())),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
     use crate::token::TokenKind;
 
     fn assert_token_kinds(input: &str, expected: Vec<TokenKind>) {
         let mut lexer = Lexer::new(input);
         for expected_kind in expected {
-            let token = lexer.next().unwrap();
+            let token = lexer.next().unwrap().unwrap();
             assert_eq!(token.kind, expected_kind);
         }
         assert!(lexer.next().is_none()); // After EOF, lexer should return None
@@ -95,5 +119,22 @@ mod tests {
             TokenKind::Eof,
         ];
         assert_token_kinds(input, expected);
+    }
+
+    #[test]
+    fn test_single_token_error() {
+        let input = r#",.$("#;
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Comma);
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
+
+        let error = lexer.next().unwrap().expect_err("should be an error");
+        // NOTE: `downcast_ref` checks if the error is a specific type
+        let single_token_error = error.downcast_ref::<SingleTokenError>().unwrap();
+        assert_eq!(single_token_error.token, '$');
+        assert_eq!(single_token_error.err_span, (2, 1).into());
+
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
     }
 }
