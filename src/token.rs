@@ -21,6 +21,15 @@ impl fmt::Display for Token<'_> {
             TokenKind::Eof => write!(f, "EOF  null"),
             TokenKind::LeftParen => write!(f, "LEFT_PAREN {lexeme} null"),
             TokenKind::RightParen => write!(f, "RIGHT_PAREN {lexeme} null"),
+            TokenKind::LeftBrace => write!(f, "LEFT_BRACE {lexeme} null"),
+            TokenKind::RightBrace => write!(f, "RIGHT_BRACE {lexeme} null"),
+            TokenKind::Comma => write!(f, "COMMA {lexeme} null"),
+            TokenKind::Semicolon => write!(f, "SEMICOLON {lexeme} null"),
+            TokenKind::Dot => write!(f, "DOT {lexeme} null"),
+            TokenKind::Plus => write!(f, "PLUS {lexeme} null"),
+            TokenKind::Minus => write!(f, "MINUS {lexeme} null"),
+            TokenKind::Star => write!(f, "STAR {lexeme} null"),
+            TokenKind::Slash => write!(f, "SLASH {lexeme} null"),
         }
     }
 }
@@ -30,8 +39,27 @@ pub enum TokenKind {
     /// End of file
     Eof,
 
+    // Single character tokens
     /// `(`
     LeftParen,
     /// `)`
     RightParen,
+    /// `{`
+    LeftBrace,
+    /// `}`
+    RightBrace,
+    /// `,`
+    Comma,
+    /// `;`
+    Semicolon,
+    /// `.`
+    Dot,
+    /// `+`
+    Plus,
+    /// `-`
+    Minus,
+    /// `*`
+    Star,
+    /// `/`
+    Slash,
 }

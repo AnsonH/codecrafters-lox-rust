@@ -41,9 +41,20 @@ impl<'de> Iterator for Lexer<'de> {
         self.rest = chars.as_str();
         self.position += ch_len;
 
+        let just = |kind: TokenKind| Some(Token::new(kind, ch_str));
+
         match ch {
-            '(' => return Some(Token::new(TokenKind::LeftParen, ch_str)),
-            ')' => return Some(Token::new(TokenKind::RightParen, ch_str)),
+            '(' => just(TokenKind::LeftParen),
+            ')' => just(TokenKind::RightParen),
+            '{' => just(TokenKind::LeftBrace),
+            '}' => just(TokenKind::RightBrace),
+            ',' => just(TokenKind::Comma),
+            ';' => just(TokenKind::Semicolon),
+            '.' => just(TokenKind::Dot),
+            '+' => just(TokenKind::Plus),
+            '-' => just(TokenKind::Minus),
+            '*' => just(TokenKind::Star),
+            '/' => just(TokenKind::Slash),
             _ => todo!("Handle unknown token"),
         }
     }
@@ -69,11 +80,17 @@ mod tests {
     }
 
     #[test]
-    fn test_parentheses() {
-        let input = "(()";
+    fn test_single_char_tokens() {
+        let input = r#"({*.,+*})"#;
         let expected = vec![
             TokenKind::LeftParen,
-            TokenKind::LeftParen,
+            TokenKind::LeftBrace,
+            TokenKind::Star,
+            TokenKind::Dot,
+            TokenKind::Comma,
+            TokenKind::Plus,
+            TokenKind::Star,
+            TokenKind::RightBrace,
             TokenKind::RightParen,
             TokenKind::Eof,
         ];
