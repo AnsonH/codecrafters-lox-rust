@@ -1,6 +1,8 @@
 use std::env;
 use std::fs;
 
+use rust_lox::lexer::Lexer;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -17,11 +19,9 @@ fn main() {
                 eprintln!("Failed to read file {}", filename);
                 String::new()
             });
-
-            if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
-            } else {
-                println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
+            let lexer = Lexer::new(&file_contents);
+            for token in lexer {
+                println!("{token}");
             }
         }
         _ => {
