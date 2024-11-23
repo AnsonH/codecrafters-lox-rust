@@ -5,7 +5,7 @@ pub struct Token<'de> {
     pub kind: TokenKind,
     /// Source code slice for this token.
     pub lexeme: &'de str,
-    // TODO: Add `offset` to track location of token
+    // TODO: Add `span` to track the token location
 }
 
 impl<'de> Token<'de> {

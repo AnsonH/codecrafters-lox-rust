@@ -1,20 +1,5 @@
+use crate::error::SyntaxError;
 use crate::token::{Token, TokenKind};
-use miette::{Diagnostic, Error, SourceSpan};
-use thiserror::Error;
-
-// TODO: Move errors into separate file?
-
-#[derive(Debug, Diagnostic, Error)]
-#[error("Unexpected token '{token}'")]
-pub struct SingleTokenError {
-    #[source_code]
-    src: String,
-
-    pub token: char,
-
-    #[label("this character")]
-    err_span: SourceSpan,
-}
 
 pub struct Lexer<'de> {
     /// The input program.
@@ -36,7 +21,7 @@ impl<'de> Lexer<'de> {
 }
 
 impl<'de> Iterator for Lexer<'de> {
-    type Item = Result<Token<'de>, Error>;
+    type Item = Result<Token<'de>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.position > self.input.len() {
@@ -72,12 +57,10 @@ impl<'de> Iterator for Lexer<'de> {
             '-' => just(TokenKind::Minus),
             '*' => just(TokenKind::Star),
             '/' => just(TokenKind::Slash),
-            c => Some(Err(SingleTokenError {
-                src: self.input.to_string(),
+            c => Some(Err(SyntaxError::SingleTokenError {
                 token: c,
                 err_span: (self.position - ch_len, ch_len).into(), // (offset, length)
-            }
-            .into())),
+            })),
         }
     }
 }
@@ -129,11 +112,14 @@ mod tests {
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Comma);
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
 
-        let error = lexer.next().unwrap().expect_err("should be an error");
-        // NOTE: `downcast_ref` checks if the error is a specific type
-        let single_token_error = error.downcast_ref::<SingleTokenError>().unwrap();
-        assert_eq!(single_token_error.token, '$');
-        assert_eq!(single_token_error.err_span, (2, 1).into());
+        let error = lexer.next().unwrap().expect_err("should be a SyntaxError");
+        assert_eq!(
+            error,
+            SyntaxError::SingleTokenError {
+                token: '$',
+                err_span: (2, 1).into()
+            }
+        );
 
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
     }
