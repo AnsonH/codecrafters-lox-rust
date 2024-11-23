@@ -1,4 +1,15 @@
+use clap::ValueEnum;
 use miette::{Diagnostic, Report, SourceSpan};
+
+/// CLI option to control error reporting format.
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ErrorFormat {
+    /// Pretty errors using [miette](https://docs.rs/miette/latest/miette).
+    Pretty,
+    /// Simple plain text errors, used for passing
+    /// [CodeCrafters](https://app.codecrafters.io/courses/interpreter) test cases.
+    Simple,
+}
 
 #[derive(thiserror::Error, Diagnostic, Debug, PartialEq)]
 pub enum SyntaxError {
@@ -30,15 +41,18 @@ impl SyntaxError {
     }
 
     /// Consumes and prints the error to stderr
-    pub fn print_error(self, source_code: &str) {
-        // TODO: Feature flag to toggle error printing (pretty, plain)
-
-        // `Diagnostic` is simply a `std::error::Error`. We must convert it to
-        // `miette::Report` so that the error is reported nicely.
-        // let report = Report::new(self).with_source_code(source_code.to_string());
-        // eprintln!("{:?}", report);
-
-        eprintln!("[line {}] Error: {}", self.line_start(source_code), self);
+    pub fn print_error(self, source_code: &str, format: &ErrorFormat) {
+        match format {
+            ErrorFormat::Pretty => {
+                // `self: miette::Diagnostic` is simply a `std::error::Error`. We must convert it to
+                // `miette::Report` so that the error is reported nicely.
+                let report = Report::new(self).with_source_code(source_code.to_string());
+                eprintln!("{:?}", report);
+            }
+            ErrorFormat::Simple => {
+                eprintln!("[line {}] Error: {}", self.line_start(source_code), self);
+            }
+        }
     }
 }
 

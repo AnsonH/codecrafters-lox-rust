@@ -6,4 +6,4 @@
 #
 # Learn more: https://codecrafters.io/program-interface
 
-exec /tmp/codecrafters-build-interpreter-rust/release/rust-lox "$@"
+exec /tmp/codecrafters-build-interpreter-rust/release/rust-lox "$@" --error-format simple
