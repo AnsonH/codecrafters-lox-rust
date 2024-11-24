@@ -15,6 +15,7 @@ impl<'de> Token<'de> {
 }
 
 impl fmt::Display for Token<'_> {
+    // NOTE: Blanket implementation will provide `.to_string()` to `Token`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let lexeme = self.lexeme;
         match self.kind {

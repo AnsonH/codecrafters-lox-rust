@@ -22,6 +22,16 @@ impl<'de> Lexer<'de> {
             position: 0,
         }
     }
+
+    /// Consumes a character and moves the lexer's position forward.
+    ///
+    /// Returns an option tuple of the consumed character and its UTF-8 length.
+    fn read_char(&mut self) -> Option<(char, usize)> {
+        let ch: char = self.rest_chars.next()?;
+        let ch_len = ch.len_utf8();
+        self.position += ch_len;
+        Some((ch, ch_len))
+    }
 }
 
 enum Started {
@@ -47,10 +57,8 @@ impl<'de> Iterator for Lexer<'de> {
             return Some(Ok(Token::new(TokenKind::Eof, "")));
         }
 
-        let ch: char = self.rest_chars.next()?;
-        let ch_len = ch.len_utf8();
-        let ch_str = self.input.get(self.position..(self.position + ch_len))?;
-        self.position += ch_len;
+        let (ch, ch_len) = self.read_char()?;
+        let ch_str = self.input.get((self.position - ch_len)..self.position)?;
 
         let just = |kind: TokenKind| Some(Ok(Token::new(kind, ch_str)));
 
@@ -86,10 +94,7 @@ impl<'de> Iterator for Lexer<'de> {
                 unmatched,
             } => {
                 if matches!(self.rest_chars.peek(), Some(&c) if c == to_match) {
-                    let next_ch = self.rest_chars.next()?;
-                    let next_ch_len = next_ch.len_utf8();
-                    self.position += next_ch_len;
-
+                    let (_, next_ch_len) = self.read_char()?;
                     let lexeme = self
                         .input
                         .get((self.position - next_ch_len - ch_len)..self.position)?;
@@ -110,52 +115,54 @@ mod tests {
     use super::*;
     use crate::token::TokenKind;
 
-    fn assert_token_kinds(input: &str, expected: Vec<TokenKind>) {
+    fn assert_tokens(input: &str, expected: &Vec<&str>) {
         let mut lexer = Lexer::new(input);
-        for expected_kind in expected {
+        for expected_token_str in expected {
             let token = lexer.next().unwrap().unwrap();
-            assert_eq!(token.kind, expected_kind);
+            assert_eq!(token.to_string(), *expected_token_str);
         }
         assert!(lexer.next().is_none()); // After EOF, lexer should return None
     }
 
     #[test]
     fn test_empty() {
-        assert_token_kinds("", vec![TokenKind::Eof]);
+        let input = "";
+        let expected = vec!["EOF  null"];
+        assert_tokens(input, &expected);
     }
 
     #[test]
     fn test_single_char_tokens() {
         let input = r#"({*.,;+*})"#;
         let expected = vec![
-            TokenKind::LeftParen,
-            TokenKind::LeftBrace,
-            TokenKind::Star,
-            TokenKind::Dot,
-            TokenKind::Comma,
-            TokenKind::Semicolon,
-            TokenKind::Plus,
-            TokenKind::Star,
-            TokenKind::RightBrace,
-            TokenKind::RightParen,
-            TokenKind::Eof,
+            "LEFT_PAREN ( null",
+            "LEFT_BRACE { null",
+            "STAR * null",
+            "DOT . null",
+            "COMMA , null",
+            "SEMICOLON ; null",
+            "PLUS + null",
+            "STAR * null",
+            "RIGHT_BRACE } null",
+            "RIGHT_PAREN ) null",
+            "EOF  null",
         ];
-        assert_token_kinds(input, expected);
+        assert_tokens(input, &expected);
     }
 
     #[test]
     fn test_assignment_and_equality() {
         let input = r#"={===}="#;
         let expected = vec![
-            TokenKind::Equal,
-            TokenKind::LeftBrace,
-            TokenKind::EqualEqual,
-            TokenKind::Equal,
-            TokenKind::RightBrace,
-            TokenKind::Equal,
-            TokenKind::Eof,
+            "EQUAL = null",
+            "LEFT_BRACE { null",
+            "EQUAL_EQUAL == null",
+            "EQUAL = null",
+            "RIGHT_BRACE } null",
+            "EQUAL = null",
+            "EOF  null",
         ];
-        assert_token_kinds(input, expected);
+        assert_tokens(input, &expected);
     }
 
     #[test]
