@@ -30,6 +30,8 @@ impl fmt::Display for Token<'_> {
             TokenKind::Minus => write!(f, "MINUS {lexeme} null"),
             TokenKind::Star => write!(f, "STAR {lexeme} null"),
             TokenKind::Slash => write!(f, "SLASH {lexeme} null"),
+            TokenKind::Equal => write!(f, "EQUAL {lexeme} null"),
+            TokenKind::EqualEqual => write!(f, "EQUAL_EQUAL {lexeme} null"),
         }
     }
 }
@@ -39,7 +41,6 @@ pub enum TokenKind {
     /// End of file
     Eof,
 
-    // Single character tokens
     /// `(`
     LeftParen,
     /// `)`
@@ -48,12 +49,14 @@ pub enum TokenKind {
     LeftBrace,
     /// `}`
     RightBrace,
+
     /// `,`
     Comma,
     /// `;`
     Semicolon,
     /// `.`
     Dot,
+
     /// `+`
     Plus,
     /// `-`
@@ -62,4 +65,9 @@ pub enum TokenKind {
     Star,
     /// `/`
     Slash,
+
+    /// `=`
+    Equal,
+    /// `==`
+    EqualEqual,
 }

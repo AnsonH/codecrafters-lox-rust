@@ -24,6 +24,15 @@ impl<'de> Lexer<'de> {
     }
 }
 
+enum Started {
+    /// Token kind is `matched` if next char is `to_match`, else is `unmatched`.
+    MatchNextChar {
+        to_match: char,
+        matched: TokenKind,
+        unmatched: TokenKind,
+    },
+}
+
 impl<'de> Iterator for Lexer<'de> {
     type Item = Result<Token<'de>, SyntaxError>;
 
@@ -45,22 +54,51 @@ impl<'de> Iterator for Lexer<'de> {
 
         let just = |kind: TokenKind| Some(Ok(Token::new(kind, ch_str)));
 
-        match ch {
-            '(' => just(TokenKind::LeftParen),
-            ')' => just(TokenKind::RightParen),
-            '{' => just(TokenKind::LeftBrace),
-            '}' => just(TokenKind::RightBrace),
-            ',' => just(TokenKind::Comma),
-            ';' => just(TokenKind::Semicolon),
-            '.' => just(TokenKind::Dot),
-            '+' => just(TokenKind::Plus),
-            '-' => just(TokenKind::Minus),
-            '*' => just(TokenKind::Star),
-            '/' => just(TokenKind::Slash),
-            c => Some(Err(SyntaxError::SingleTokenError {
-                token: c,
-                err_span: (self.position - ch_len, ch_len).into(), // (offset, length)
-            })),
+        let started = match ch {
+            '(' => return just(TokenKind::LeftParen),
+            ')' => return just(TokenKind::RightParen),
+            '{' => return just(TokenKind::LeftBrace),
+            '}' => return just(TokenKind::RightBrace),
+            ',' => return just(TokenKind::Comma),
+            ';' => return just(TokenKind::Semicolon),
+            '.' => return just(TokenKind::Dot),
+            '+' => return just(TokenKind::Plus),
+            '-' => return just(TokenKind::Minus),
+            '*' => return just(TokenKind::Star),
+            '/' => return just(TokenKind::Slash),
+            '=' => Started::MatchNextChar {
+                to_match: '=',
+                matched: TokenKind::EqualEqual,
+                unmatched: TokenKind::Equal,
+            },
+            c => {
+                return Some(Err(SyntaxError::SingleTokenError {
+                    token: c,
+                    err_span: (self.position - ch_len, ch_len).into(), // (offset, length)
+                }));
+            }
+        };
+
+        match started {
+            Started::MatchNextChar {
+                to_match,
+                matched,
+                unmatched,
+            } => {
+                if matches!(self.rest_chars.peek(), Some(&c) if c == to_match) {
+                    let next_ch = self.rest_chars.next()?;
+                    let next_ch_len = next_ch.len_utf8();
+                    self.position += next_ch_len;
+
+                    let lexeme = self
+                        .input
+                        .get((self.position - next_ch_len - ch_len)..self.position)?;
+
+                    Some(Ok(Token::new(matched, lexeme)))
+                } else {
+                    just(unmatched)
+                }
+            }
         }
     }
 }
@@ -88,17 +126,33 @@ mod tests {
 
     #[test]
     fn test_single_char_tokens() {
-        let input = r#"({*.,+*})"#;
+        let input = r#"({*.,;+*})"#;
         let expected = vec![
             TokenKind::LeftParen,
             TokenKind::LeftBrace,
             TokenKind::Star,
             TokenKind::Dot,
             TokenKind::Comma,
+            TokenKind::Semicolon,
             TokenKind::Plus,
             TokenKind::Star,
             TokenKind::RightBrace,
             TokenKind::RightParen,
+            TokenKind::Eof,
+        ];
+        assert_token_kinds(input, expected);
+    }
+
+    #[test]
+    fn test_assignment_and_equality() {
+        let input = r#"={===}="#;
+        let expected = vec![
+            TokenKind::Equal,
+            TokenKind::LeftBrace,
+            TokenKind::EqualEqual,
+            TokenKind::Equal,
+            TokenKind::RightBrace,
+            TokenKind::Equal,
             TokenKind::Eof,
         ];
         assert_token_kinds(input, expected);
