@@ -21,7 +21,7 @@ pub enum SyntaxError {
         err_span: SourceSpan,
     },
 
-    #[error("Unterminated string")]
+    #[error("Unterminated string.")]
     UnterminatedStringError {
         #[label("This string literal")]
         err_span: SourceSpan,
