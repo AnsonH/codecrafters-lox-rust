@@ -33,10 +33,27 @@ impl<'de> Lexer<'de> {
         Some((ch, ch_len))
     }
 
-    /// Peeks the next char to see if it is end of file.
-    #[inline]
-    fn is_peek_char_eof(&mut self) -> bool {
-        self.rest_chars.peek().is_none()
+    /// Consumes characters while `predicate` returns true.
+    ///
+    /// The `predicate` receives the peeked char as the argument. If it returns true,
+    /// the character is consumed. If it returns false or the peeked char is end of file,
+    /// the loop stops.
+    ///
+    /// Returns a vector of chars that satisfies the predicate.
+    fn read_chars_while<F>(&mut self, predicate: F) -> Vec<char>
+    where
+        F: Fn(char) -> bool,
+    {
+        let mut chars: Vec<char> = Vec::new();
+        while let Some(&peek_ch) = self.rest_chars.peek() {
+            if predicate(peek_ch) {
+                let (ch, _) = self.read_char().unwrap();
+                chars.push(ch);
+            } else {
+                break;
+            }
+        }
+        chars
     }
 }
 
@@ -62,7 +79,7 @@ impl<'de> Iterator for Lexer<'de> {
         }
 
         loop {
-            if self.is_peek_char_eof() {
+            if self.rest_chars.peek().is_none() {
                 self.position += 1;
                 return Some(Ok(Token::new(TokenKind::Eof, "")));
             }
@@ -133,13 +150,7 @@ impl<'de> Iterator for Lexer<'de> {
                 }
                 Started::Slash => {
                     if self.rest_chars.peek() == Some(&'/') {
-                        loop {
-                            let is_line_end_reached = self.is_peek_char_eof()
-                                || matches!(self.read_char(), Some((ch, _)) if ch == '\n');
-                            if is_line_end_reached {
-                                break;
-                            }
-                        }
+                        self.read_chars_while(|ch| ch != '\n');
                         continue;
                     } else {
                         just(TokenKind::Slash)
@@ -164,6 +175,19 @@ mod tests {
             assert_eq!(token.to_string(), *expected_token_str);
         }
         assert!(lexer.next().is_none()); // After EOF, lexer should return None
+    }
+
+    #[test]
+    fn test_read_chars_while() {
+        let mut lexer = Lexer::new("abc123");
+
+        let chars = lexer.read_chars_while(|ch| ch.is_alphabetic());
+        assert_eq!(chars, vec!['a', 'b', 'c']);
+        assert_eq!(lexer.rest_chars.peek(), Some(&'1'));
+
+        let chars = lexer.read_chars_while(|ch| ch.is_ascii_digit());
+        assert_eq!(chars, vec!['1', '2', '3']);
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Eof);
     }
 
     #[test]
