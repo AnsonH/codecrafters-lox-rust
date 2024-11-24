@@ -33,6 +33,8 @@ impl fmt::Display for Token<'_> {
             TokenKind::Slash => write!(f, "SLASH {lexeme} null"),
             TokenKind::Equal => write!(f, "EQUAL {lexeme} null"),
             TokenKind::EqualEqual => write!(f, "EQUAL_EQUAL {lexeme} null"),
+            TokenKind::Bang => write!(f, "BANG {lexeme} null"),
+            TokenKind::BangEqual => write!(f, "BANG_EQUAL {lexeme} null"),
         }
     }
 }
@@ -71,4 +73,8 @@ pub enum TokenKind {
     Equal,
     /// `==`
     EqualEqual,
+    /// `!`
+    Bang,
+    /// `!=`
+    BangEqual,
 }

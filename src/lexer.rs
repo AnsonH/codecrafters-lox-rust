@@ -79,6 +79,11 @@ impl<'de> Iterator for Lexer<'de> {
                 matched: TokenKind::EqualEqual,
                 unmatched: TokenKind::Equal,
             },
+            '!' => Started::MatchNextChar {
+                to_match: '=',
+                matched: TokenKind::BangEqual,
+                unmatched: TokenKind::Bang,
+            },
             c => {
                 return Some(Err(SyntaxError::SingleTokenError {
                     token: c,
@@ -160,6 +165,19 @@ mod tests {
             "EQUAL = null",
             "RIGHT_BRACE } null",
             "EQUAL = null",
+            "EOF  null",
+        ];
+        assert_tokens(input, &expected);
+    }
+
+    #[test]
+    fn test_negation_and_inequality() {
+        let input = r#"!!===!"#;
+        let expected = vec![
+            "BANG ! null",
+            "BANG_EQUAL != null",
+            "EQUAL_EQUAL == null",
+            "BANG ! null",
             "EOF  null",
         ];
         assert_tokens(input, &expected);
