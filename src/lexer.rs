@@ -1,11 +1,15 @@
 use crate::error::SyntaxError;
 use crate::token::{Token, TokenKind};
+use std::iter::Peekable;
+use std::str::Chars;
 
 pub struct Lexer<'de> {
     /// The input program.
     input: &'de str,
-    /// Rest of the input that we haven't scanned.
-    rest: &'de str,
+    /// Remaining characters of the input that the lexer hasn't scanned.
+    ///
+    /// [Peekable] is useful for peeking into future characters without consuming them.
+    rest_chars: Peekable<Chars<'de>>,
     /// Current byte position in the input.
     position: usize,
 }
@@ -14,7 +18,7 @@ impl<'de> Lexer<'de> {
     pub fn new(input: &'de str) -> Self {
         Lexer {
             input,
-            rest: input,
+            rest_chars: input.chars().peekable(),
             position: 0,
         }
     }
@@ -29,18 +33,14 @@ impl<'de> Iterator for Lexer<'de> {
             // Rust will stop the `for token in lexer {}` loop if `.next()` returns `None`.
             return None;
         }
-        if self.rest.is_empty() {
+        if self.rest_chars.peek().is_none() {
             self.position += 1;
             return Some(Ok(Token::new(TokenKind::Eof, "")));
         }
 
-        // TODO: Maybe extract this logic into `advance` / `read_char`?
-        let mut chars = self.rest.chars();
-        let ch: char = chars.next()?;
+        let ch: char = self.rest_chars.next()?;
         let ch_len = ch.len_utf8();
-        let ch_str = &self.rest[..ch_len]; // "converts" `char` to `&str`
-
-        self.rest = chars.as_str();
+        let ch_str = self.input.get(self.position..(self.position + ch_len))?;
         self.position += ch_len;
 
         let just = |kind: TokenKind| Some(Ok(Token::new(kind, ch_str)));

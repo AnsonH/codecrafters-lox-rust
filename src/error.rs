@@ -29,17 +29,6 @@ pub enum SyntaxError {
 }
 
 impl SyntaxError {
-    /// Starting line number of the error
-    fn line_start(&self, source_code: &str) -> usize {
-        let offset = match self {
-            Self::SingleTokenError { err_span, .. } => err_span.offset(),
-            Self::StringTerminationError { err_span, .. } => err_span.offset(),
-        };
-
-        let src_until_err = &source_code[..=offset];
-        src_until_err.lines().count()
-    }
-
     /// Consumes and prints the error to stderr
     pub fn print_error(self, source_code: &str, format: &ErrorFormat) {
         match format {
@@ -53,6 +42,17 @@ impl SyntaxError {
                 eprintln!("[line {}] Error: {}", self.line_start(source_code), self);
             }
         }
+    }
+
+    /// Starting line number of the error
+    fn line_start(&self, source_code: &str) -> usize {
+        let offset = match self {
+            Self::SingleTokenError { err_span, .. } => err_span.offset(),
+            Self::StringTerminationError { err_span, .. } => err_span.offset(),
+        };
+
+        let src_until_err = &source_code[..=offset];
+        src_until_err.lines().count()
     }
 }
 
