@@ -66,6 +66,7 @@ enum Started {
         unmatched: TokenKind,
     },
     Slash,
+    String,
 }
 
 impl<'de> Iterator for Lexer<'de> {
@@ -121,6 +122,7 @@ impl<'de> Iterator for Lexer<'de> {
                     matched: TokenKind::GreaterEqual,
                     unmatched: TokenKind::Greater,
                 },
+                '"' => Started::String,
                 c if c.is_whitespace() => continue,
                 c => {
                     return Some(Err(SyntaxError::SingleTokenError {
@@ -154,6 +156,28 @@ impl<'de> Iterator for Lexer<'de> {
                         continue;
                     } else {
                         just(TokenKind::Slash)
+                    }
+                }
+                Started::String => {
+                    let str_content: String =
+                        self.read_chars_while(|ch| ch != '"').into_iter().collect();
+                    let str_content_len = str_content.len();
+
+                    if let Some(&'"') = self.rest_chars.peek() {
+                        self.read_char(); // Consume ending `"``
+
+                        // Lexeme includes the enclosing `"`
+                        let lexeme = self
+                            .input
+                            .get((self.position - str_content_len - 2)..self.position)?;
+
+                        Some(Ok(Token::new(TokenKind::String, lexeme)))
+                    } else {
+                        Some(Err(SyntaxError::UnterminatedStringError {
+                            // The `1` below is the length of starting `"`
+                            err_span: (self.position - str_content_len - 1, str_content_len + 1)
+                                .into(),
+                        }))
                     }
                 }
             };
@@ -260,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn test_single_line_comment() {
+    fn test_single_line_comments() {
         let empty_comment = "//";
         let expected = vec!["EOF  null"];
         assert_tokens(empty_comment, &expected);
@@ -292,6 +316,35 @@ mod tests {
     }
 
     #[test]
+    fn test_strings() {
+        let string_only = r#""foo baz!""#;
+        let expected = vec!["STRING \"foo baz!\" foo baz!", "EOF  null"];
+        assert_tokens(string_only, &expected);
+
+        let string_in_middle = r#"("foo baz")"#;
+        let expected = vec![
+            "LEFT_PAREN ( null",
+            "STRING \"foo baz\" foo baz",
+            "RIGHT_PAREN ) null",
+            "EOF  null",
+        ];
+        assert_tokens(string_in_middle, &expected);
+
+        let non_ascii_string = r#"("hi 你好")"#; // '你' and '好' has UTF-8 length of 3
+        let expected = vec![
+            "LEFT_PAREN ( null",
+            "STRING \"hi 你好\" hi 你好",
+            "RIGHT_PAREN ) null",
+            "EOF  null",
+        ];
+        assert_tokens(non_ascii_string, &expected);
+
+        let multi_line_string = "\"foo\nbar\"";
+        let expected = vec!["STRING \"foo\nbar\" foo\nbar", "EOF  null"];
+        assert_tokens(multi_line_string, &expected);
+    }
+
+    #[test]
     fn test_single_token_error() {
         let input = r#",.$("#;
         let mut lexer = Lexer::new(input);
@@ -309,5 +362,21 @@ mod tests {
         );
 
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
+    }
+
+    #[test]
+    fn test_unterminated_string_error() {
+        let input = r#"."bar"#;
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
+
+        let error = lexer.next().unwrap().expect_err("should be a SyntaxError");
+        assert_eq!(
+            error,
+            SyntaxError::UnterminatedStringError {
+                err_span: (1, 4).into()
+            }
+        )
     }
 }

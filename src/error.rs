@@ -22,7 +22,7 @@ pub enum SyntaxError {
     },
 
     #[error("Unterminated string")]
-    StringTerminationError {
+    UnterminatedStringError {
         #[label("This string literal")]
         err_span: SourceSpan,
     },
@@ -48,7 +48,7 @@ impl SyntaxError {
     fn line_start(&self, source_code: &str) -> usize {
         let offset = match self {
             Self::SingleTokenError { err_span, .. } => err_span.offset(),
-            Self::StringTerminationError { err_span, .. } => err_span.offset(),
+            Self::UnterminatedStringError { err_span, .. } => err_span.offset(),
         };
 
         let src_until_err = &source_code[..=offset];
@@ -62,8 +62,8 @@ mod tests {
 
     #[test]
     fn test_line_start() {
-        let source_code = "'hi\nbye";
-        let error = SyntaxError::StringTerminationError {
+        let source_code = "\"hi\nbye";
+        let error = SyntaxError::UnterminatedStringError {
             err_span: (0, 7).into(), // (offset, length)
         };
         assert_eq!(error.line_start(source_code), 1);

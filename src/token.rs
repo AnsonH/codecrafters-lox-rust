@@ -61,6 +61,9 @@ pub enum TokenKind {
     Greater,
     /// `>=`
     GreaterEqual,
+
+    /// String literals (e.g. `"hi"`). The lexeme contains the surrounding double quotes.
+    String,
 }
 
 impl fmt::Display for Token<'_> {
@@ -88,6 +91,7 @@ impl fmt::Display for Token<'_> {
             TokenKind::LessEqual => write!(f, "LESS_EQUAL {lexeme} null"),
             TokenKind::Greater => write!(f, "GREATER {lexeme} null"),
             TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {lexeme} null"),
+            TokenKind::String => write!(f, "STRING {lexeme} {}", lexeme.trim_matches('"')),
         }
     }
 }
