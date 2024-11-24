@@ -84,6 +84,16 @@ impl<'de> Iterator for Lexer<'de> {
                 matched: TokenKind::BangEqual,
                 unmatched: TokenKind::Bang,
             },
+            '<' => Started::MatchNextChar {
+                to_match: '=',
+                matched: TokenKind::LessEqual,
+                unmatched: TokenKind::Less,
+            },
+            '>' => Started::MatchNextChar {
+                to_match: '=',
+                matched: TokenKind::GreaterEqual,
+                unmatched: TokenKind::Greater,
+            },
             c => {
                 return Some(Err(SyntaxError::SingleTokenError {
                     token: c,
@@ -178,6 +188,21 @@ mod tests {
             "BANG_EQUAL != null",
             "EQUAL_EQUAL == null",
             "BANG ! null",
+            "EOF  null",
+        ];
+        assert_tokens(input, &expected);
+    }
+
+    #[test]
+    fn test_relational() {
+        let input = r#"<<==>>=="#;
+        let expected = vec![
+            "LESS < null",
+            "LESS_EQUAL <= null",
+            "EQUAL = null",
+            "GREATER > null",
+            "GREATER_EQUAL >= null",
+            "EQUAL = null",
             "EOF  null",
         ];
         assert_tokens(input, &expected);
