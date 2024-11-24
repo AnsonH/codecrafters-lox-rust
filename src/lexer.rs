@@ -104,6 +104,7 @@ impl<'de> Iterator for Lexer<'de> {
                     matched: TokenKind::GreaterEqual,
                     unmatched: TokenKind::Greater,
                 },
+                c if c.is_whitespace() => continue,
                 c => {
                     return Some(Err(SyntaxError::SingleTokenError {
                         token: c,
@@ -256,6 +257,14 @@ mod tests {
         let not_comment = "/(";
         let expected = vec!["SLASH / null", "LEFT_PAREN ( null", "EOF  null"];
         assert_tokens(not_comment, &expected);
+    }
+
+    #[test]
+    fn test_whitespaces() {
+        let input = "    (\t\r
+        )";
+        let expected = vec!["LEFT_PAREN ( null", "RIGHT_PAREN ) null", "EOF  null"];
+        assert_tokens(input, &expected);
     }
 
     #[test]
