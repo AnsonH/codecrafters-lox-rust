@@ -74,6 +74,19 @@ impl<'src> Lexer<'src> {
     fn is_peek_char(&mut self, expected: char) -> bool {
         self.rest_chars.peek() == Some(&expected)
     }
+
+    /// Peeks twice to see if that character satisfies `predicate`.
+    fn is_next_peek_char<F>(&mut self, predicate: F) -> bool
+    where
+        F: Fn(char) -> bool,
+    {
+        let mut rest_chars = self.rest_chars.clone();
+        rest_chars.next();
+        match rest_chars.peek() {
+            Some(&peek_ch) => predicate(peek_ch),
+            None => false,
+        }
+    }
 }
 
 /// Scenarios that requires scanning multiple characters to determine the token.
@@ -86,6 +99,7 @@ enum Started<'src> {
     },
     Slash,
     String,
+    Number,
 }
 
 impl<'src> Iterator for Lexer<'src> {
@@ -143,6 +157,7 @@ impl<'src> Iterator for Lexer<'src> {
                 },
                 '"' => Started::String,
                 c if c.is_whitespace() => continue,
+                c if c.is_ascii_digit() => Started::Number,
                 c => {
                     return Some(Err(SyntaxError::SingleTokenError {
                         token: c,
@@ -198,6 +213,22 @@ impl<'src> Iterator for Lexer<'src> {
                         }))
                     }
                 }
+                Started::Number => {
+                    let start_pos = self.position - ch_len; // since first digit is consumed
+
+                    self.read_chars_while(|c| c.is_ascii_digit());
+
+                    // Trailing decimal point (e.g. `123.`) is considered invalid,
+                    // and we treat it as two tokens: "123" and "."
+                    if self.is_peek_char('.') && self.is_next_peek_char(|c| c.is_ascii_digit()) {
+                        self.read_char(); // Consume `.`
+                        self.read_chars_while(|c| c.is_ascii_digit());
+                    }
+
+                    let lexeme = self.input.get(start_pos..self.position)?;
+                    let value: f64 = lexeme.parse().unwrap();
+                    Some(Ok(Token::new(TokenKind::Number(value), lexeme)))
+                }
             };
         }
     }
@@ -223,6 +254,12 @@ mod tests {
             }
         }
         assert!(lexer.next().is_none()); // After EOF, lexer should return None
+    }
+
+    /// Asserts the output of `lexer.next()` equals the `expected` [SyntaxError]
+    fn assert_syntax_error(input: Option<Result<Token, SyntaxError>>, expected: &SyntaxError) {
+        let error = input.unwrap().expect_err("should be a SyntaxError");
+        assert_eq!(error, *expected);
     }
 
     #[test]
@@ -253,6 +290,27 @@ mod tests {
         assert!(lexer.next().is_none());
     }
 
+    #[test]
+    fn test_is_next_peek_char() {
+        let input = "ab1";
+        let mut lexer = Lexer::new(input);
+
+        assert!(lexer.is_next_peek_char(|c| c == 'b'));
+        assert_eq!(lexer.rest_chars.peek(), Some(&'a')); // Peek doesn't advance lexer
+
+        lexer.read_char(); // Read 'a'
+        assert!(lexer.is_next_peek_char(|c| c == '1'));
+
+        lexer.read_char(); // Read 'b'
+        assert!(!lexer.is_next_peek_char(|_| true));
+
+        let empty_input = "";
+        let mut lexer = Lexer::new(empty_input);
+        assert!(!lexer.is_next_peek_char(|_| true));
+        assert_eq!(lexer.rest_chars.peek(), None);
+    }
+
+    // TODO: Extract integration tests into `tests` folder
     #[test]
     fn test_empty() {
         let input = "";
@@ -384,22 +442,62 @@ mod tests {
     }
 
     #[test]
+    fn test_number() {
+        assert!('¹'.is_numeric());
+
+        let valid_numbers = "0 9 123 123.456 0.00001 0123";
+        let expected = vec![
+            "NUMBER 0 0.0",
+            "NUMBER 9 9.0",
+            "NUMBER 123 123.0",
+            "NUMBER 123.456 123.456",
+            "NUMBER 0.00001 0.00001",
+            "NUMBER 0123 123.0",
+            "EOF  null",
+        ];
+        assert_tokens(valid_numbers, &expected);
+
+        let invalid_numbers = ".456 123. 12,0 12.34.56";
+        let expected = vec![
+            "DOT . null",
+            "NUMBER 456 456.0",
+            "NUMBER 123 123.0",
+            "DOT . null",
+            "NUMBER 12 12.0",
+            "COMMA , null",
+            "NUMBER 0 0.0",
+            "NUMBER 12.34 12.34",
+            "DOT . null",
+            "NUMBER 56 56.0",
+            "EOF  null",
+        ];
+        assert_tokens(invalid_numbers, &expected);
+
+        let non_ascii_number = "¹";
+        let mut lexer = Lexer::new(non_ascii_number);
+        assert_syntax_error(
+            lexer.next(),
+            &SyntaxError::SingleTokenError {
+                token: '¹',
+                err_span: (0, '¹'.len_utf8()).into(),
+            },
+        );
+    }
+
+    #[test]
     fn test_single_token_error() {
         let input = r#",.$("#;
         let mut lexer = Lexer::new(input);
 
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Comma);
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
-
-        let error = lexer.next().unwrap().expect_err("should be a SyntaxError");
-        assert_eq!(
-            error,
-            SyntaxError::SingleTokenError {
+        assert_syntax_error(
+            lexer.next(),
+            &SyntaxError::SingleTokenError {
                 token: '$',
-                err_span: (2, 1).into()
-            }
+                err_span: (2, 1).into(),
+            },
         );
-
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
     }
 
@@ -409,13 +507,11 @@ mod tests {
         let mut lexer = Lexer::new(input);
 
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
-
-        let error = lexer.next().unwrap().expect_err("should be a SyntaxError");
-        assert_eq!(
-            error,
-            SyntaxError::UnterminatedStringError {
-                err_span: (1, 4).into()
-            }
+        assert_syntax_error(
+            lexer.next(),
+            &SyntaxError::UnterminatedStringError {
+                err_span: (1, 4).into(),
+            },
         )
     }
 }

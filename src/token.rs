@@ -67,6 +67,11 @@ pub enum TokenKind<'src> {
     /// The enum value is the string content, while the [Token::lexeme] contains
     /// the surrounding double quotes.
     String(&'src str),
+    /// Number literals (e.g. `1234`, `12.34`)
+    ///
+    /// Note: Lox doesn't allow leading/trailing decimal points, such as `.1234`
+    /// or `1234.`
+    Number(f64),
 }
 
 impl fmt::Display for Token<'_> {
@@ -95,6 +100,14 @@ impl fmt::Display for Token<'_> {
             TokenKind::Greater => write!(f, "GREATER {lexeme} null"),
             TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {lexeme} null"),
             TokenKind::String(string) => write!(f, "STRING {lexeme} {string}"),
+            TokenKind::Number(number) => {
+                if number.fract() == 0_f64 {
+                    // Tests requires integers to be print as N.0
+                    write!(f, "NUMBER {lexeme} {number}.0")
+                } else {
+                    write!(f, "NUMBER {lexeme} {number}")
+                }
+            }
         }
     }
 }
