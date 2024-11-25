@@ -93,12 +93,9 @@ impl<'src> Lexer<'src> {
 
 /// Scenarios that requires scanning multiple characters to determine the token.
 enum Started<'src> {
-    /// Token kind is `matched` if next char is `to_match`, else is `unmatched`.
-    MatchNextChar {
-        to_match: char,
-        matched: Token<'src>,
-        unmatched: Token<'src>,
-    },
+    /// It has a shape of `(to_match, matched, unmatched)`, where token's type
+    /// is `matched` if next char equals to `to_match`, else its type is `unmatched`.
+    MatchNextChar(char, Token<'src>, Token<'src>),
     Slash,
     String,
     Number,
@@ -135,26 +132,10 @@ impl<'src> Iterator for Lexer<'src> {
                 '-' => return Some(Ok(Token::Minus)),
                 '*' => return Some(Ok(Token::Star)),
                 '/' => Started::Slash,
-                '=' => Started::MatchNextChar {
-                    to_match: '=',
-                    matched: Token::EqualEqual,
-                    unmatched: Token::Equal,
-                },
-                '!' => Started::MatchNextChar {
-                    to_match: '=',
-                    matched: Token::BangEqual,
-                    unmatched: Token::Bang,
-                },
-                '<' => Started::MatchNextChar {
-                    to_match: '=',
-                    matched: Token::LessEqual,
-                    unmatched: Token::Less,
-                },
-                '>' => Started::MatchNextChar {
-                    to_match: '=',
-                    matched: Token::GreaterEqual,
-                    unmatched: Token::Greater,
-                },
+                '=' => Started::MatchNextChar('=', Token::EqualEqual, Token::Equal),
+                '!' => Started::MatchNextChar('=', Token::BangEqual, Token::Bang),
+                '<' => Started::MatchNextChar('=', Token::LessEqual, Token::Less),
+                '>' => Started::MatchNextChar('=', Token::GreaterEqual, Token::Greater),
                 '"' => Started::String,
                 c if c.is_whitespace() => continue,
                 c if c.is_ascii_digit() => Started::Number,
@@ -169,11 +150,7 @@ impl<'src> Iterator for Lexer<'src> {
 
             // `break match` = Return the match statement's value back to the loop
             break match started {
-                Started::MatchNextChar {
-                    to_match,
-                    matched,
-                    unmatched,
-                } => {
+                Started::MatchNextChar(to_match, matched, unmatched) => {
                     if self.is_peek_char(to_match) {
                         self.read_char()?;
                         Some(Ok(matched))
