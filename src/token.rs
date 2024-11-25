@@ -4,8 +4,9 @@ use std::fmt;
 pub struct Token<'src> {
     pub kind: TokenKind<'src>,
     /// Source code slice for this token.
+    // TODO: Right now the only use of `lexeme` is for display in `impl fmt::Display`,
+    // maybe we can remove it and turn `TokenKind` into `Token`
     pub lexeme: &'src str,
-    // TODO: Add `span` to track the token location
 }
 
 impl<'src> Token<'src> {
@@ -72,6 +73,8 @@ pub enum TokenKind<'src> {
     /// Note: Lox doesn't allow leading/trailing decimal points, such as `.1234`
     /// or `1234.`
     Number(f64),
+    /// Identifiers (e.g. `foo`, `bar_2`)
+    Identifier(&'src str),
 }
 
 impl fmt::Display for Token<'_> {
@@ -108,6 +111,7 @@ impl fmt::Display for Token<'_> {
                     write!(f, "NUMBER {lexeme} {number}")
                 }
             }
+            TokenKind::Identifier(_) => write!(f, "IDENTIFIER {lexeme} null"),
         }
     }
 }

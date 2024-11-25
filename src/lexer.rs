@@ -100,6 +100,7 @@ enum Started<'src> {
     Slash,
     String,
     Number,
+    IdentOrKeyword,
 }
 
 impl<'src> Iterator for Lexer<'src> {
@@ -158,6 +159,7 @@ impl<'src> Iterator for Lexer<'src> {
                 '"' => Started::String,
                 c if c.is_whitespace() => continue,
                 c if c.is_ascii_digit() => Started::Number,
+                c if c.is_ascii_alphabetic() || c == '_' => Started::IdentOrKeyword,
                 c => {
                     return Some(Err(SyntaxError::SingleTokenError {
                         token: c,
@@ -228,6 +230,14 @@ impl<'src> Iterator for Lexer<'src> {
                     let lexeme = self.input.get(start_pos..self.position)?;
                     let value: f64 = lexeme.parse().unwrap();
                     Some(Ok(Token::new(TokenKind::Number(value), lexeme)))
+                }
+                Started::IdentOrKeyword => {
+                    let start_pos = self.position - ch_len; // since first char is consumed
+
+                    self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
+
+                    let lexeme = self.input.get(start_pos..self.position)?;
+                    Some(Ok(Token::new(TokenKind::Identifier(lexeme), lexeme)))
                 }
             };
         }
@@ -310,7 +320,6 @@ mod tests {
         assert_eq!(lexer.rest_chars.peek(), None);
     }
 
-    // TODO: Extract integration tests into `tests` folder
     #[test]
     fn test_empty() {
         let input = "";
@@ -482,6 +491,28 @@ mod tests {
                 err_span: (0, '¹'.len_utf8()).into(),
             },
         );
+    }
+
+    #[test]
+    fn test_identifier() {
+        let valid_identifiers = "andy formless fo _ _123 _abc ab123
+        abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
+        let expected = vec![
+            "IDENTIFIER andy null",
+            "IDENTIFIER formless null",
+            "IDENTIFIER fo null",
+            "IDENTIFIER _ null",
+            "IDENTIFIER _123 null",
+            "IDENTIFIER _abc null",
+            "IDENTIFIER ab123 null",
+            "IDENTIFIER abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_ null",
+            "EOF  null",
+        ];
+        assert_tokens(valid_identifiers, &expected);
+
+        let invalid_identifier = "1foo"; // identifiers shouldn't start with a number
+        let expected = vec!["NUMBER 1 1.0", "IDENTIFIER foo null", "EOF  null"];
+        assert_tokens(invalid_identifier, &expected);
     }
 
     #[test]
