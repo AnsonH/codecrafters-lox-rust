@@ -510,6 +510,16 @@ mod tests {
         ];
         assert_tokens(valid_identifiers, &expected);
 
+        let with_other_tokens = "foo.bar;";
+        let expected = vec![
+            "IDENTIFIER foo null",
+            "DOT . null",
+            "IDENTIFIER bar null",
+            "SEMICOLON ; null",
+            "EOF  null",
+        ];
+        assert_tokens(with_other_tokens, &expected);
+
         let invalid_identifier = "1foo"; // identifiers shouldn't start with a number
         let expected = vec!["NUMBER 1 1.0", "IDENTIFIER foo null", "EOF  null"];
         assert_tokens(invalid_identifier, &expected);
