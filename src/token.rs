@@ -1,21 +1,21 @@
 use std::fmt;
 
 #[derive(Debug)]
-pub struct Token<'de> {
-    pub kind: TokenKind,
+pub struct Token<'src> {
+    pub kind: TokenKind<'src>,
     /// Source code slice for this token.
-    pub lexeme: &'de str,
+    pub lexeme: &'src str,
     // TODO: Add `span` to track the token location
 }
 
-impl<'de> Token<'de> {
-    pub fn new(kind: TokenKind, lexeme: &'de str) -> Self {
+impl<'src> Token<'src> {
+    pub fn new(kind: TokenKind<'src>, lexeme: &'src str) -> Self {
         Self { kind, lexeme }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenKind {
+pub enum TokenKind<'src> {
     /// End of file
     Eof,
 
@@ -66,7 +66,7 @@ pub enum TokenKind {
     ///
     /// The enum value is the string content, while the [Token::lexeme] contains
     /// the surrounding double quotes.
-    String(String),
+    String(&'src str),
 }
 
 impl fmt::Display for Token<'_> {
@@ -94,7 +94,7 @@ impl fmt::Display for Token<'_> {
             TokenKind::LessEqual => write!(f, "LESS_EQUAL {lexeme} null"),
             TokenKind::Greater => write!(f, "GREATER {lexeme} null"),
             TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {lexeme} null"),
-            TokenKind::String(string) => write!(f, "STRING {lexeme} {}", string),
+            TokenKind::String(string) => write!(f, "STRING {lexeme} {string}"),
         }
     }
 }

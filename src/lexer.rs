@@ -3,19 +3,25 @@ use crate::token::{Token, TokenKind};
 use std::iter::Peekable;
 use std::str::Chars;
 
-pub struct Lexer<'de> {
+/// Lexer tokenizes an input string into a sequence of tokens.
+///
+/// # Lifetimes
+///
+/// The `'src` lifetime ensures both the `input` and `rest_chars` are tied to the
+/// same lifetime, i.e. they both reference the same string source.
+pub struct Lexer<'src> {
     /// The input program.
-    input: &'de str,
+    input: &'src str,
     /// Remaining characters of the input that the lexer hasn't scanned.
     ///
     /// [Peekable] is useful for peeking into future characters without consuming them.
-    rest_chars: Peekable<Chars<'de>>,
+    rest_chars: Peekable<Chars<'src>>,
     /// Current byte position in the input.
     position: usize,
 }
 
-impl<'de> Lexer<'de> {
-    pub fn new(input: &'de str) -> Self {
+impl<'src> Lexer<'src> {
+    pub fn new(input: &'src str) -> Self {
         Lexer {
             input,
             rest_chars: input.chars().peekable(),
@@ -39,38 +45,51 @@ impl<'de> Lexer<'de> {
     /// the character is consumed. If it returns false or the peeked char is end of file,
     /// the loop stops.
     ///
-    /// Returns a vector of chars that satisfies the predicate.
-    fn read_chars_while<F>(&mut self, predicate: F) -> Vec<char>
+    /// # Returns
+    ///
+    /// A tuple of `(matched_str, total_len)`:
+    /// - `matched_str`: The string slice that satisfies the predicate
+    /// - `total_len`: Total UTF-8 length of the matched string
+    fn read_chars_while<F>(&mut self, predicate: F) -> (&'src str, usize)
     where
         F: Fn(char) -> bool,
     {
-        let mut chars: Vec<char> = Vec::new();
+        let start_pos = self.position;
+
         while let Some(&peek_ch) = self.rest_chars.peek() {
             if predicate(peek_ch) {
-                let (ch, _) = self.read_char().unwrap();
-                chars.push(ch);
+                self.read_char();
             } else {
                 break;
             }
         }
-        chars
+
+        let matched_str = &self.input[start_pos..self.position];
+        let total_len = self.position - start_pos;
+        (matched_str, total_len)
+    }
+
+    /// Returns true if peeked char equals `expected`.
+    #[inline]
+    fn is_peek_char(&mut self, expected: char) -> bool {
+        self.rest_chars.peek() == Some(&expected)
     }
 }
 
 /// Scenarios that requires scanning multiple characters to determine the token.
-enum Started {
+enum Started<'src> {
     /// Token kind is `matched` if next char is `to_match`, else is `unmatched`.
     MatchNextChar {
         to_match: char,
-        matched: TokenKind,
-        unmatched: TokenKind,
+        matched: TokenKind<'src>,
+        unmatched: TokenKind<'src>,
     },
     Slash,
     String,
 }
 
-impl<'de> Iterator for Lexer<'de> {
-    type Item = Result<Token<'de>, SyntaxError>;
+impl<'src> Iterator for Lexer<'src> {
+    type Item = Result<Token<'src>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.position > self.input.len() {
@@ -86,9 +105,9 @@ impl<'de> Iterator for Lexer<'de> {
             }
 
             let (ch, ch_len) = self.read_char()?;
-            let ch_str = self.input.get((self.position - ch_len)..self.position)?;
+            let ch_str: &'src str = self.input.get((self.position - ch_len)..self.position)?;
 
-            let just = |kind: TokenKind| Some(Ok(Token::new(kind, ch_str)));
+            let just = |kind: TokenKind<'src>| Some(Ok(Token::new(kind, ch_str)));
 
             let started = match ch {
                 '(' => return just(TokenKind::LeftParen),
@@ -139,7 +158,7 @@ impl<'de> Iterator for Lexer<'de> {
                     matched,
                     unmatched,
                 } => {
-                    if self.rest_chars.peek() == Some(&to_match) {
+                    if self.is_peek_char(to_match) {
                         let (_, next_ch_len) = self.read_char()?;
                         let lexeme = self
                             .input
@@ -151,19 +170,18 @@ impl<'de> Iterator for Lexer<'de> {
                     }
                 }
                 Started::Slash => {
-                    if self.rest_chars.peek() == Some(&'/') {
-                        self.read_chars_while(|ch| ch != '\n');
+                    if self.is_peek_char('/') {
+                        // Ignore single line comments, we don't have a token for that
+                        self.read_chars_while(|c| c != '\n');
                         continue;
                     } else {
                         just(TokenKind::Slash)
                     }
                 }
                 Started::String => {
-                    let str_content: String =
-                        self.read_chars_while(|ch| ch != '"').into_iter().collect();
-                    let str_content_len = str_content.len();
+                    let (str_content, str_content_len) = { self.read_chars_while(|c| c != '"') };
 
-                    if let Some(&'"') = self.rest_chars.peek() {
+                    if self.is_peek_char('"') {
                         self.read_char(); // Consume ending `"``
 
                         // Lexeme includes the enclosing `"`
@@ -190,29 +208,49 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::token::TokenKind;
+    use crate::{error::ErrorFormat, token::TokenKind};
     use pretty_assertions::assert_eq;
 
     fn assert_tokens(input: &str, expected: &Vec<&str>) {
         let mut lexer = Lexer::new(input);
         for expected_token_str in expected {
-            let token = lexer.next().unwrap().unwrap();
-            assert_eq!(token.to_string(), *expected_token_str);
+            match lexer.next().unwrap() {
+                Ok(token) => assert_eq!(token.to_string(), *expected_token_str),
+                Err(err) => {
+                    err.print_error(input, &ErrorFormat::Pretty);
+                    panic!("Encountered a SyntaxError");
+                }
+            }
         }
         assert!(lexer.next().is_none()); // After EOF, lexer should return None
     }
 
     #[test]
     fn test_read_chars_while() {
-        let mut lexer = Lexer::new("abc123");
+        let input = "abcd123";
+        let mut lexer = Lexer::new(input);
 
-        let chars = lexer.read_chars_while(|ch| ch.is_alphabetic());
-        assert_eq!(chars, vec!['a', 'b', 'c']);
+        // Consume 'abcd'
+        let result = lexer.read_chars_while(|c| c.is_alphabetic());
+        assert_eq!(result, ("abcd", 4));
         assert_eq!(lexer.rest_chars.peek(), Some(&'1'));
+        assert_eq!(lexer.position, 4);
 
-        let chars = lexer.read_chars_while(|ch| ch.is_ascii_digit());
-        assert_eq!(chars, vec!['1', '2', '3']);
+        // Predicate returns false immediately -> No-op
+        let result = lexer.read_chars_while(|c| c.is_alphabetic());
+        assert_eq!(result, ("", 0));
+        assert_eq!(lexer.rest_chars.peek(), Some(&'1'));
+        assert_eq!(lexer.position, 4);
+
+        // Consume '123'
+        let result = lexer.read_chars_while(|c| c.is_numeric());
+        assert_eq!(result, ("123", 3));
+        assert_eq!(lexer.rest_chars.peek(), None);
+        assert_eq!(lexer.position, 7);
+
+        // Next token is EOF
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Eof);
+        assert!(lexer.next().is_none());
     }
 
     #[test]
