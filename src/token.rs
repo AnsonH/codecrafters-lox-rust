@@ -1,22 +1,7 @@
 use std::fmt;
 
-#[derive(Debug)]
-pub struct Token<'src> {
-    pub kind: TokenKind<'src>,
-    /// Source code slice for this token.
-    // TODO: Right now the only use of `lexeme` is for display in `impl fmt::Display`,
-    // maybe we can remove it and turn `TokenKind` into `Token`
-    pub lexeme: &'src str,
-}
-
-impl<'src> Token<'src> {
-    pub fn new(kind: TokenKind<'src>, lexeme: &'src str) -> Self {
-        Self { kind, lexeme }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenKind<'src> {
+pub enum Token<'src> {
     /// End of file
     Eof,
 
@@ -72,7 +57,11 @@ pub enum TokenKind<'src> {
     ///
     /// Note: Lox doesn't allow leading/trailing decimal points, such as `.1234`
     /// or `1234.`
-    Number(f64),
+    Number {
+        value: f64,
+        /// The raw code of the number, purely for passing test cases only
+        raw: &'src str,
+    },
     /// Identifiers (e.g. `foo`, `bar_2`)
     Identifier(&'src str),
 }
@@ -80,38 +69,37 @@ pub enum TokenKind<'src> {
 impl fmt::Display for Token<'_> {
     // NOTE: Blanket implementation will provide `.to_string()` to `Token`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lexeme = self.lexeme;
-        match &self.kind {
-            TokenKind::Eof => write!(f, "EOF  null"),
-            TokenKind::LeftParen => write!(f, "LEFT_PAREN {lexeme} null"),
-            TokenKind::RightParen => write!(f, "RIGHT_PAREN {lexeme} null"),
-            TokenKind::LeftBrace => write!(f, "LEFT_BRACE {lexeme} null"),
-            TokenKind::RightBrace => write!(f, "RIGHT_BRACE {lexeme} null"),
-            TokenKind::Comma => write!(f, "COMMA {lexeme} null"),
-            TokenKind::Semicolon => write!(f, "SEMICOLON {lexeme} null"),
-            TokenKind::Dot => write!(f, "DOT {lexeme} null"),
-            TokenKind::Plus => write!(f, "PLUS {lexeme} null"),
-            TokenKind::Minus => write!(f, "MINUS {lexeme} null"),
-            TokenKind::Star => write!(f, "STAR {lexeme} null"),
-            TokenKind::Slash => write!(f, "SLASH {lexeme} null"),
-            TokenKind::Equal => write!(f, "EQUAL {lexeme} null"),
-            TokenKind::EqualEqual => write!(f, "EQUAL_EQUAL {lexeme} null"),
-            TokenKind::Bang => write!(f, "BANG {lexeme} null"),
-            TokenKind::BangEqual => write!(f, "BANG_EQUAL {lexeme} null"),
-            TokenKind::Less => write!(f, "LESS {lexeme} null"),
-            TokenKind::LessEqual => write!(f, "LESS_EQUAL {lexeme} null"),
-            TokenKind::Greater => write!(f, "GREATER {lexeme} null"),
-            TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {lexeme} null"),
-            TokenKind::String(string) => write!(f, "STRING {lexeme} {string}"),
-            TokenKind::Number(number) => {
-                if number.fract() == 0_f64 {
+        match self {
+            Token::Eof => write!(f, "EOF  null"),
+            Token::LeftParen => write!(f, "LEFT_PAREN ( null"),
+            Token::RightParen => write!(f, "RIGHT_PAREN ) null"),
+            Token::LeftBrace => write!(f, "LEFT_BRACE {{ null"), // To escape `{`, add another `{`
+            Token::RightBrace => write!(f, "RIGHT_BRACE }} null"),
+            Token::Comma => write!(f, "COMMA , null"),
+            Token::Semicolon => write!(f, "SEMICOLON ; null"),
+            Token::Dot => write!(f, "DOT . null"),
+            Token::Plus => write!(f, "PLUS + null"),
+            Token::Minus => write!(f, "MINUS - null"),
+            Token::Star => write!(f, "STAR * null"),
+            Token::Slash => write!(f, "SLASH / null"),
+            Token::Equal => write!(f, "EQUAL = null"),
+            Token::EqualEqual => write!(f, "EQUAL_EQUAL == null"),
+            Token::Bang => write!(f, "BANG ! null"),
+            Token::BangEqual => write!(f, "BANG_EQUAL != null"),
+            Token::Less => write!(f, "LESS < null"),
+            Token::LessEqual => write!(f, "LESS_EQUAL <= null"),
+            Token::Greater => write!(f, "GREATER > null"),
+            Token::GreaterEqual => write!(f, "GREATER_EQUAL >= null"),
+            Token::String(string) => write!(f, "STRING \"{string}\" {string}"),
+            Token::Number { value, raw } => {
+                if value.fract() == 0_f64 {
                     // Tests requires integers to be print as N.0
-                    write!(f, "NUMBER {lexeme} {number}.0")
+                    write!(f, "NUMBER {raw} {value}.0")
                 } else {
-                    write!(f, "NUMBER {lexeme} {number}")
+                    write!(f, "NUMBER {raw} {value}")
                 }
             }
-            TokenKind::Identifier(_) => write!(f, "IDENTIFIER {lexeme} null"),
+            Token::Identifier(ident) => write!(f, "IDENTIFIER {ident} null"),
         }
     }
 }

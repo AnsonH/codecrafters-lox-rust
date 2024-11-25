@@ -1,5 +1,5 @@
 use crate::error::SyntaxError;
-use crate::token::{Token, TokenKind};
+use crate::token::Token;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -94,8 +94,8 @@ enum Started<'src> {
     /// Token kind is `matched` if next char is `to_match`, else is `unmatched`.
     MatchNextChar {
         to_match: char,
-        matched: TokenKind<'src>,
-        unmatched: TokenKind<'src>,
+        matched: Token<'src>,
+        unmatched: Token<'src>,
     },
     Slash,
     String,
@@ -116,45 +116,42 @@ impl<'src> Iterator for Lexer<'src> {
         loop {
             if self.rest_chars.peek().is_none() {
                 self.position += 1;
-                return Some(Ok(Token::new(TokenKind::Eof, "")));
+                return Some(Ok(Token::Eof));
             }
 
             let (ch, ch_len) = self.read_char()?;
-            let ch_str: &'src str = self.input.get((self.position - ch_len)..self.position)?;
-
-            let just = |kind: TokenKind<'src>| Some(Ok(Token::new(kind, ch_str)));
 
             let started = match ch {
-                '(' => return just(TokenKind::LeftParen),
-                ')' => return just(TokenKind::RightParen),
-                '{' => return just(TokenKind::LeftBrace),
-                '}' => return just(TokenKind::RightBrace),
-                ',' => return just(TokenKind::Comma),
-                ';' => return just(TokenKind::Semicolon),
-                '.' => return just(TokenKind::Dot),
-                '+' => return just(TokenKind::Plus),
-                '-' => return just(TokenKind::Minus),
-                '*' => return just(TokenKind::Star),
+                '(' => return Some(Ok(Token::LeftParen)),
+                ')' => return Some(Ok(Token::RightParen)),
+                '{' => return Some(Ok(Token::LeftBrace)),
+                '}' => return Some(Ok(Token::RightBrace)),
+                ',' => return Some(Ok(Token::Comma)),
+                ';' => return Some(Ok(Token::Semicolon)),
+                '.' => return Some(Ok(Token::Dot)),
+                '+' => return Some(Ok(Token::Plus)),
+                '-' => return Some(Ok(Token::Minus)),
+                '*' => return Some(Ok(Token::Star)),
                 '/' => Started::Slash,
                 '=' => Started::MatchNextChar {
                     to_match: '=',
-                    matched: TokenKind::EqualEqual,
-                    unmatched: TokenKind::Equal,
+                    matched: Token::EqualEqual,
+                    unmatched: Token::Equal,
                 },
                 '!' => Started::MatchNextChar {
                     to_match: '=',
-                    matched: TokenKind::BangEqual,
-                    unmatched: TokenKind::Bang,
+                    matched: Token::BangEqual,
+                    unmatched: Token::Bang,
                 },
                 '<' => Started::MatchNextChar {
                     to_match: '=',
-                    matched: TokenKind::LessEqual,
-                    unmatched: TokenKind::Less,
+                    matched: Token::LessEqual,
+                    unmatched: Token::Less,
                 },
                 '>' => Started::MatchNextChar {
                     to_match: '=',
-                    matched: TokenKind::GreaterEqual,
-                    unmatched: TokenKind::Greater,
+                    matched: Token::GreaterEqual,
+                    unmatched: Token::Greater,
                 },
                 '"' => Started::String,
                 c if c.is_whitespace() => continue,
@@ -176,14 +173,10 @@ impl<'src> Iterator for Lexer<'src> {
                     unmatched,
                 } => {
                     if self.is_peek_char(to_match) {
-                        let (_, next_ch_len) = self.read_char()?;
-                        let lexeme = self
-                            .input
-                            .get((self.position - next_ch_len - ch_len)..self.position)?;
-
-                        Some(Ok(Token::new(matched, lexeme)))
+                        self.read_char()?;
+                        Some(Ok(matched))
                     } else {
-                        just(unmatched)
+                        Some(Ok(unmatched))
                     }
                 }
                 Started::Slash => {
@@ -192,7 +185,7 @@ impl<'src> Iterator for Lexer<'src> {
                         self.read_chars_while(|c| c != '\n');
                         continue;
                     } else {
-                        just(TokenKind::Slash)
+                        Some(Ok(Token::Slash))
                     }
                 }
                 Started::String => {
@@ -200,13 +193,7 @@ impl<'src> Iterator for Lexer<'src> {
 
                     if self.is_peek_char('"') {
                         self.read_char(); // Consume ending `"``
-
-                        // Lexeme includes the enclosing `"`
-                        let lexeme = self
-                            .input
-                            .get((self.position - str_content_len - 2)..self.position)?;
-
-                        Some(Ok(Token::new(TokenKind::String(str_content), lexeme)))
+                        Some(Ok(Token::String(str_content)))
                     } else {
                         Some(Err(SyntaxError::UnterminatedStringError {
                             // The `1` below is the length of starting `"`
@@ -227,17 +214,17 @@ impl<'src> Iterator for Lexer<'src> {
                         self.read_chars_while(|c| c.is_ascii_digit());
                     }
 
-                    let lexeme = self.input.get(start_pos..self.position)?;
-                    let value: f64 = lexeme.parse().unwrap();
-                    Some(Ok(Token::new(TokenKind::Number(value), lexeme)))
+                    let raw: &str = self.input.get(start_pos..self.position)?;
+                    let value: f64 = raw.parse().unwrap();
+                    Some(Ok(Token::Number { value, raw }))
                 }
                 Started::IdentOrKeyword => {
                     let start_pos = self.position - ch_len; // since first char is consumed
 
                     self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
 
-                    let lexeme = self.input.get(start_pos..self.position)?;
-                    Some(Ok(Token::new(TokenKind::Identifier(lexeme), lexeme)))
+                    let ident = self.input.get(start_pos..self.position)?;
+                    Some(Ok(Token::Identifier(ident)))
                 }
             };
         }
@@ -249,7 +236,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::{error::ErrorFormat, token::TokenKind};
+    use crate::{error::ErrorFormat, token::Token};
     use pretty_assertions::assert_eq;
 
     fn assert_tokens(input: &str, expected: &Vec<&str>) {
@@ -296,7 +283,7 @@ mod tests {
         assert_eq!(lexer.position, 7);
 
         // Next token is EOF
-        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Eof);
+        assert_eq!(lexer.next().unwrap().unwrap(), Token::Eof);
         assert!(lexer.next().is_none());
     }
 
@@ -452,16 +439,15 @@ mod tests {
 
     #[test]
     fn test_number() {
-        assert!('¹'.is_numeric());
-
-        let valid_numbers = "0 9 123 123.456 0.00001 0123";
+        let valid_numbers = "0 9 123 123.456 65.000 0.00001 0123";
         let expected = vec![
             "NUMBER 0 0.0",
             "NUMBER 9 9.0",
             "NUMBER 123 123.0",
             "NUMBER 123.456 123.456",
+            "NUMBER 65.000 65.0",
             "NUMBER 0.00001 0.00001",
-            "NUMBER 0123 123.0",
+            "NUMBER 0123 123.0", // leading zeros are ignored
             "EOF  null",
         ];
         assert_tokens(valid_numbers, &expected);
@@ -530,8 +516,8 @@ mod tests {
         let input = r#",.$("#;
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Comma);
-        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
+        assert_eq!(lexer.next().unwrap().unwrap(), Token::Comma);
+        assert_eq!(lexer.next().unwrap().unwrap(), Token::Dot);
         assert_syntax_error(
             lexer.next(),
             &SyntaxError::SingleTokenError {
@@ -539,7 +525,7 @@ mod tests {
                 err_span: (2, 1).into(),
             },
         );
-        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
+        assert_eq!(lexer.next().unwrap().unwrap(), Token::LeftParen);
     }
 
     #[test]
@@ -547,7 +533,7 @@ mod tests {
         let input = r#"."bar"#;
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
+        assert_eq!(lexer.next().unwrap().unwrap(), Token::Dot);
         assert_syntax_error(
             lexer.next(),
             &SyntaxError::UnterminatedStringError {
