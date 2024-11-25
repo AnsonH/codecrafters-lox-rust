@@ -1,4 +1,5 @@
 use std::fmt;
+use strum::EnumString;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token<'src> {
@@ -50,8 +51,7 @@ pub enum Token<'src> {
 
     /// String literals (e.g. `"hi"`)
     ///
-    /// The enum value is the string content, while the [Token::lexeme] contains
-    /// the surrounding double quotes.
+    /// The enum value is the string content without the double quotes.
     String(&'src str),
     /// Number literals (e.g. `1234`, `12.34`)
     ///
@@ -62,8 +62,11 @@ pub enum Token<'src> {
         /// The raw code of the number, purely for passing test cases only
         raw: &'src str,
     },
+
     /// Identifiers (e.g. `foo`, `bar_2`)
     Identifier(&'src str),
+    /// Reserved keywords. See [Keyword].
+    Keyword(Keyword),
 }
 
 impl fmt::Display for Token<'_> {
@@ -100,6 +103,68 @@ impl fmt::Display for Token<'_> {
                 }
             }
             Token::Identifier(ident) => write!(f, "IDENTIFIER {ident} null"),
+            Token::Keyword(keyword) => write!(
+                f,
+                "{} {} null",
+                keyword.to_string().to_ascii_uppercase(),
+                keyword
+            ),
         }
+    }
+}
+
+/// Reserved Lox keywords.
+///
+/// Supports two-way conversion between `Keyword` and `&str` (in snake case),
+/// powered by [strum].
+///
+/// # Examples
+///
+/// ```
+/// use rust_lox::token::Keyword;
+/// use std::str::FromStr;  // Provides `Keyword::from_str`
+///
+/// assert_eq!(Keyword::from_str("and"), Ok(Keyword::And));
+/// assert!(Keyword::from_str("foo").is_err());
+/// assert_eq!(Keyword::And.to_string(), "and");
+/// ```
+#[derive(Debug, Clone, Copy, strum::Display, EnumString, PartialEq, Eq)]
+#[strum(serialize_all = "snake_case")]
+pub enum Keyword {
+    And,
+    Class,
+    Else,
+    False,
+    For,
+    Fun,
+    If,
+    Nil,
+    Or,
+    Print,
+    Return,
+    Super,
+    This,
+    True,
+    Var,
+    While,
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_keyword() {
+        // &str -> Keyword
+        assert_eq!(Keyword::from_str("and"), Ok(Keyword::And));
+        assert_eq!(
+            Keyword::from_str("foo"),
+            Err(strum::ParseError::VariantNotFound)
+        );
+
+        // Display & ToString
+        assert_eq!(Keyword::And.to_string(), "and");
     }
 }

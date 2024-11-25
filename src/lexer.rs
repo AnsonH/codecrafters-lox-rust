@@ -1,7 +1,9 @@
 use crate::error::SyntaxError;
+use crate::token::Keyword;
 use crate::token::Token;
 use std::iter::Peekable;
 use std::str::Chars;
+use std::str::FromStr;
 
 /// Lexer tokenizes an input string into a sequence of tokens.
 ///
@@ -222,9 +224,13 @@ impl<'src> Iterator for Lexer<'src> {
                     let start_pos = self.position - ch_len; // since first char is consumed
 
                     self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
+                    let word = self.input.get(start_pos..self.position)?;
 
-                    let ident = self.input.get(start_pos..self.position)?;
-                    Some(Ok(Token::Identifier(ident)))
+                    let token = match Keyword::from_str(word) {
+                        Ok(keyword) => Token::Keyword(keyword),
+                        Err(_) => Token::Identifier(word),
+                    };
+                    Some(Ok(token))
                 }
             };
         }
@@ -480,8 +486,8 @@ mod tests {
     }
 
     #[test]
-    fn test_identifier() {
-        let valid_identifiers = "andy formless fo _ _123 _abc ab123
+    fn test_identifiers_and_keywords() {
+        let ident_only = "andy formless fo _ _123 _abc ab123
         abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
         let expected = vec![
             "IDENTIFIER andy null",
@@ -494,9 +500,9 @@ mod tests {
             "IDENTIFIER abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_ null",
             "EOF  null",
         ];
-        assert_tokens(valid_identifiers, &expected);
+        assert_tokens(ident_only, &expected);
 
-        let with_other_tokens = "foo.bar;";
+        let ident_with_other_tokens = "foo.bar;";
         let expected = vec![
             "IDENTIFIER foo null",
             "DOT . null",
@@ -504,11 +510,46 @@ mod tests {
             "SEMICOLON ; null",
             "EOF  null",
         ];
-        assert_tokens(with_other_tokens, &expected);
+        assert_tokens(ident_with_other_tokens, &expected);
 
-        let invalid_identifier = "1foo"; // identifiers shouldn't start with a number
+        let invalid_ident = "1foo"; // identifiers shouldn't start with a number
         let expected = vec!["NUMBER 1 1.0", "IDENTIFIER foo null", "EOF  null"];
-        assert_tokens(invalid_identifier, &expected);
+        assert_tokens(invalid_ident, &expected);
+
+        let keywords =
+            "and class else false for fun if nil or print return super this true var while";
+        let expected = vec![
+            "AND and null",
+            "CLASS class null",
+            "ELSE else null",
+            "FALSE false null",
+            "FOR for null",
+            "FUN fun null",
+            "IF if null",
+            "NIL nil null",
+            "OR or null",
+            "PRINT print null",
+            "RETURN return null",
+            "SUPER super null",
+            "THIS this null",
+            "TRUE true null",
+            "VAR var null",
+            "WHILE while null",
+            "EOF  null",
+        ];
+        assert_tokens(keywords, &expected);
+
+        let ident_and_keywords = "class clazz fun fn true truee";
+        let expected = vec![
+            "CLASS class null",
+            "IDENTIFIER clazz null",
+            "FUN fun null",
+            "IDENTIFIER fn null",
+            "TRUE true null",
+            "IDENTIFIER truee null",
+            "EOF  null",
+        ];
+        assert_tokens(ident_and_keywords, &expected);
     }
 
     #[test]
