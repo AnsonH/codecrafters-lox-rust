@@ -539,10 +539,10 @@ mod tests {
         ];
         assert_tokens(keywords, &expected);
 
-        let ident_and_keywords = "class clazz fun fn true truee";
+        let ident_and_keywords = "class CLASS fun fn true truee";
         let expected = vec![
             "CLASS class null",
-            "IDENTIFIER clazz null",
+            "IDENTIFIER CLASS null",
             "FUN fun null",
             "IDENTIFIER fn null",
             "TRUE true null",
