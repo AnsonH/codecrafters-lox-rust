@@ -191,6 +191,7 @@ mod tests {
 
     use super::*;
     use crate::token::TokenKind;
+    use pretty_assertions::assert_eq;
 
     fn assert_tokens(input: &str, expected: &Vec<&str>) {
         let mut lexer = Lexer::new(input);
