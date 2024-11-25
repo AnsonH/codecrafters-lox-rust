@@ -10,7 +10,7 @@ anyhow = "1.0.68"                                # error handling
 clap = { version = "4.5.21", features = ["derive"] }    # command line parsing
 miette = { version = "7.2.0", features = ["fancy"] }    # fancy errors
 strum = { version = "0.26.3", features = ["derive"] }   # enum to string conversion
-thiserror = "1.0.38"                             # error handling
+thiserror = "2.0.3"                             # error handling
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
