@@ -14,7 +14,7 @@ impl<'de> Token<'de> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     /// End of file
     Eof,
@@ -62,15 +62,18 @@ pub enum TokenKind {
     /// `>=`
     GreaterEqual,
 
-    /// String literals (e.g. `"hi"`). The lexeme contains the surrounding double quotes.
-    String,
+    /// String literals (e.g. `"hi"`)
+    ///
+    /// The enum value is the string content, while the [Token::lexeme] contains
+    /// the surrounding double quotes.
+    String(String),
 }
 
 impl fmt::Display for Token<'_> {
     // NOTE: Blanket implementation will provide `.to_string()` to `Token`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let lexeme = self.lexeme;
-        match self.kind {
+        match &self.kind {
             TokenKind::Eof => write!(f, "EOF  null"),
             TokenKind::LeftParen => write!(f, "LEFT_PAREN {lexeme} null"),
             TokenKind::RightParen => write!(f, "RIGHT_PAREN {lexeme} null"),
@@ -91,7 +94,7 @@ impl fmt::Display for Token<'_> {
             TokenKind::LessEqual => write!(f, "LESS_EQUAL {lexeme} null"),
             TokenKind::Greater => write!(f, "GREATER {lexeme} null"),
             TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {lexeme} null"),
-            TokenKind::String => write!(f, "STRING {lexeme} {}", lexeme.trim_matches('"')),
+            TokenKind::String(string) => write!(f, "STRING {lexeme} {}", string),
         }
     }
 }

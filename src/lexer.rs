@@ -171,7 +171,7 @@ impl<'de> Iterator for Lexer<'de> {
                             .input
                             .get((self.position - str_content_len - 2)..self.position)?;
 
-                        Some(Ok(Token::new(TokenKind::String, lexeme)))
+                        Some(Ok(Token::new(TokenKind::String(str_content), lexeme)))
                     } else {
                         Some(Err(SyntaxError::UnterminatedStringError {
                             // The `1` below is the length of starting `"`
