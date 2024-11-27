@@ -116,7 +116,7 @@ impl fmt::Display for Token<'_> {
 /// Reserved Lox keywords.
 ///
 /// Supports two-way conversion between `Keyword` and `&str` (in snake case),
-/// powered by [strum].
+/// powered by [strum] and [phf].
 ///
 /// # Examples
 ///
@@ -129,7 +129,7 @@ impl fmt::Display for Token<'_> {
 /// assert_eq!(Keyword::And.to_string(), "and");
 /// ```
 #[derive(Debug, Clone, Copy, strum::Display, EnumString, PartialEq, Eq)]
-#[strum(serialize_all = "snake_case")]
+#[strum(use_phf, serialize_all = "snake_case")]
 pub enum Keyword {
     And,
     Class,
