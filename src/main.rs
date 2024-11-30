@@ -13,13 +13,6 @@ enum ExitCode {
     LexicalError = 65,
 }
 
-// From ExitCode to i32
-impl From<ExitCode> for i32 {
-    fn from(val: ExitCode) -> Self {
-        val as i32
-    }
-}
-
 #[derive(Parser)]
 #[command(version, about = "A Lox language interpreter")]
 struct Cli {
@@ -80,7 +73,7 @@ fn main() -> miette::Result<()> {
                 println!("{token}");
             }
             if has_errors {
-                std::process::exit(ExitCode::LexicalError.into());
+                std::process::exit(ExitCode::LexicalError as i32);
             }
         }
     }
