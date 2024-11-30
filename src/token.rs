@@ -1,6 +1,7 @@
 use std::fmt;
 use strum::EnumString;
 
+// TODO: Can consider separating token value from token kind: https://oxc.rs/docs/learn/performance.html#token
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token<'src> {
     /// End of file
@@ -51,7 +52,10 @@ pub enum Token<'src> {
 
     /// String literals (e.g. `"hi"`)
     ///
-    /// The enum value is the string content without the double quotes.
+    /// The enum value is the string content without the double quotes. Since Lox
+    /// does not support escape sequences like `\n`, we don't need to allocate a
+    /// new string to store the computed escaped string. Thus, we can directly
+    /// reference the source text.
     String(&'src str),
     /// Number literals (e.g. `1234`, `12.34`)
     ///
@@ -59,7 +63,7 @@ pub enum Token<'src> {
     /// or `1234.`
     Number {
         value: f64,
-        /// The raw code of the number, purely for passing test cases only
+        /// The raw code of the number, purely for passing Lox test cases only.
         raw: &'src str,
     },
 

@@ -143,7 +143,7 @@ impl<'src> Iterator for Lexer<'src> {
                 c => {
                     return Some(Err(SyntaxError::SingleTokenError {
                         token: c,
-                        err_span: (self.position - ch_len, ch_len).into(), // (offset, length)
+                        span: (self.position - ch_len, ch_len).into(), // (offset, length)
                     }));
                 }
             };
@@ -176,8 +176,7 @@ impl<'src> Iterator for Lexer<'src> {
                     } else {
                         Some(Err(SyntaxError::UnterminatedStringError {
                             // The `1` below is the length of starting `"`
-                            err_span: (self.position - str_content_len - 1, str_content_len + 1)
-                                .into(),
+                            span: (self.position - str_content_len - 1, str_content_len + 1).into(),
                         }))
                     }
                 }
@@ -457,7 +456,7 @@ mod tests {
             lexer.next(),
             &SyntaxError::SingleTokenError {
                 token: '¹',
-                err_span: (0, '¹'.len_utf8()).into(),
+                span: (0, '¹'.len_utf8()).into(),
             },
         );
     }
@@ -540,7 +539,7 @@ mod tests {
             lexer.next(),
             &SyntaxError::SingleTokenError {
                 token: '$',
-                err_span: (2, 1).into(),
+                span: (2, 1).into(),
             },
         );
         assert_eq!(lexer.next().unwrap().unwrap(), Token::LeftParen);
@@ -555,7 +554,7 @@ mod tests {
         assert_syntax_error(
             lexer.next(),
             &SyntaxError::UnterminatedStringError {
-                err_span: (1, 4).into(),
+                span: (1, 4).into(),
             },
         )
     }

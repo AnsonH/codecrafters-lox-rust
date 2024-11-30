@@ -18,13 +18,13 @@ pub enum SyntaxError {
         token: char,
 
         #[label("This character")]
-        err_span: SourceSpan,
+        span: SourceSpan,
     },
 
     #[error("Unterminated string.")]
     UnterminatedStringError {
         #[label("This string literal")]
-        err_span: SourceSpan,
+        span: SourceSpan,
     },
 }
 
@@ -47,8 +47,8 @@ impl SyntaxError {
     /// Starting line number of the error
     fn line_start(&self, source_code: &str) -> usize {
         let offset = match self {
-            Self::SingleTokenError { err_span, .. } => err_span.offset(),
-            Self::UnterminatedStringError { err_span, .. } => err_span.offset(),
+            Self::SingleTokenError { span, .. } => span.offset(),
+            Self::UnterminatedStringError { span, .. } => span.offset(),
         };
 
         let src_until_err = &source_code[..=offset];
@@ -65,14 +65,14 @@ mod tests {
     fn test_line_start() {
         let source_code = "\"hi\nbye";
         let error = SyntaxError::UnterminatedStringError {
-            err_span: (0, 7).into(), // (offset, length)
+            span: (0, 7).into(), // (offset, length)
         };
         assert_eq!(error.line_start(source_code), 1);
 
         let source_code = "1\n2\n@";
         let error = SyntaxError::SingleTokenError {
             token: '@',
-            err_span: (4, 1).into(),
+            span: (4, 1).into(),
         };
         assert_eq!(error.line_start(source_code), 3);
     }
