@@ -1,11 +1,12 @@
 use std::fs;
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser as ClapParser, Subcommand};
 use miette::{IntoDiagnostic, WrapErr};
 use rust_lox::{
     error::{ErrorFormat, SyntaxError},
     lexer::Lexer,
+    parser::Parser,
     token::Token,
 };
 
@@ -13,7 +14,7 @@ enum ExitCode {
     LexicalError = 65,
 }
 
-#[derive(Parser)]
+#[derive(ClapParser)]
 #[command(version, about = "A Lox language interpreter")]
 struct Cli {
     #[command(subcommand)]
@@ -36,6 +37,17 @@ enum Commands {
         )]
         error_format: ErrorFormat,
     },
+    /// Parses an expression and prints out a braces-format AST.
+    Parse {
+        /// Path to a `.lox` file.
+        filename: PathBuf,
+    },
+}
+
+fn read_file(filename: &PathBuf) -> miette::Result<String> {
+    fs::read_to_string(filename)
+        .into_diagnostic() // Converts Error into a miette::Report for pretty errors
+        .wrap_err(format!("Fail to read '{}'", filename.display()))
 }
 
 fn main() -> miette::Result<()> {
@@ -46,12 +58,9 @@ fn main() -> miette::Result<()> {
             filename,
             error_format,
         } => {
+            let file_contents = read_file(filename)?;
+
             let mut has_errors = false;
-
-            let file_contents = fs::read_to_string(filename)
-                .into_diagnostic() // Converts Error into a miette::Diagnostic for pretty errors
-                .wrap_err(format!("Fail to read '{}'", filename.display()))?;
-
             let mut tokens: Vec<Token> = vec![];
             let mut errors: Vec<SyntaxError> = vec![];
 
@@ -74,6 +83,18 @@ fn main() -> miette::Result<()> {
             }
             if has_errors {
                 std::process::exit(ExitCode::LexicalError as i32);
+            }
+        }
+        Commands::Parse { filename } => {
+            let file_contents = read_file(filename)?;
+
+            let mut parser = Parser::new(&file_contents);
+            match parser.parse_expression(0) {
+                Ok(expr) => println!("{expr}"),
+                Err(err) => {
+                    err.print_error(&file_contents, &ErrorFormat::Pretty);
+                    std::process::exit(ExitCode::LexicalError as i32);
+                }
             }
         }
     }
