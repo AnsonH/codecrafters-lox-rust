@@ -19,6 +19,15 @@ enum ExitCode {
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    /// Error formatting.
+    #[arg(
+            long = "error-format",
+            value_name = "FORMAT",
+            default_value_t = ErrorFormat::Pretty,
+            value_enum
+        )]
+    error_format: ErrorFormat,
 }
 
 #[derive(Subcommand)]
@@ -27,15 +36,6 @@ enum Commands {
     Tokenize {
         /// Path to a `.lox` file.
         filename: PathBuf,
-
-        /// Error formatting.
-        #[arg(
-            long = "error-format",
-            value_name = "FORMAT",
-            default_value_t = ErrorFormat::Pretty,
-            value_enum
-        )]
-        error_format: ErrorFormat,
     },
     /// Parses an expression and prints out a braces-format AST.
     Parse {
@@ -54,10 +54,7 @@ fn main() -> miette::Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Tokenize {
-            filename,
-            error_format,
-        } => {
+        Commands::Tokenize { filename } => {
             let file_contents = read_file(filename)?;
 
             let mut has_errors = false;
@@ -76,7 +73,7 @@ fn main() -> miette::Result<()> {
             }
 
             for error in errors {
-                error.print_error(&file_contents, error_format);
+                error.print_error(&file_contents, &cli.error_format);
             }
             for token in tokens {
                 println!("{token}");
@@ -92,7 +89,7 @@ fn main() -> miette::Result<()> {
             match parser.parse_expression(0) {
                 Ok(expr) => println!("{expr}"),
                 Err(err) => {
-                    err.print_error(&file_contents, &ErrorFormat::Pretty);
+                    err.print_error(&file_contents, &cli.error_format);
                     std::process::exit(ExitCode::LexicalError as i32);
                 }
             }
