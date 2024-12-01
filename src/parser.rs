@@ -4,7 +4,7 @@ use crate::{
     ast::{Expr, Literal, Program},
     error::SyntaxError,
     lexer::Lexer,
-    token::{Keyword, Token},
+    token::TokenKind,
 };
 
 pub struct Parser<'src> {
@@ -34,27 +34,25 @@ impl<'src> Parser<'src> {
     // TODO: Add docs
     pub fn parse_expression(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
         let lhs_token = match self.lexer.next() {
-            Some(Ok(Token::Eof)) | None => return Ok(Expr::Literal(Literal::Nil)),
+            Some(Ok(TokenKind::Eof)) | None => return Ok(Expr::Literal(Literal::Nil)),
             Some(Err(err)) => return Err(err),
             Some(Ok(token)) => token,
         };
 
         let lhs = match lhs_token {
-            Token::Keyword(Keyword::True) => Expr::Literal(Literal::Boolean(true)),
-            Token::Keyword(Keyword::False) => Expr::Literal(Literal::Boolean(false)),
-            Token::Keyword(Keyword::Nil) => Expr::Literal(Literal::Nil),
-            Token::Number { value, .. } => Expr::Literal(Literal::Number(value)),
-            Token::String(s) => Expr::Literal(Literal::String(s)),
-            Token::LeftParen => {
-                let expr = self.parse_expression(0)?;
-                if self.expect(Token::RightParen).is_err() {
-                    return Err(SyntaxError::UnexpectedToken {
-                        expected: ')',
-                        span: todo!(),
-                    });
-                }
-                Expr::Grouping(Box::new(expr))
-            }
+            TokenKind::True => Expr::Literal(Literal::Boolean(true)),
+            TokenKind::False => Expr::Literal(Literal::Boolean(false)),
+            TokenKind::Nil => Expr::Literal(Literal::Nil),
+            // FIXME
+            // TokenKind::Number { value, .. } => Expr::Literal(Literal::Number(value)),
+            // TokenKind::String(s) => Expr::Literal(Literal::String(s)),
+            // TokenKind::LeftParen => {
+            //     let expr = self.parse_expression(0)?;
+            //     if self.expect(TokenKind::RightParen).is_err() {
+            //         todo!()
+            //     }
+            //     Expr::Grouping(Box::new(expr))
+            // }
             _ => todo!(),
         };
 
@@ -62,7 +60,7 @@ impl<'src> Parser<'src> {
     }
 
     /// Consumes the next token if it equals to `expected`.
-    fn expect(&mut self, expected: Token<'src>) -> Result<Token<'src>, ()> {
+    fn expect(&mut self, expected: TokenKind) -> Result<TokenKind, ()> {
         match self.lexer.peek() {
             Some(Ok(token)) if *token == expected => {
                 let token = self.lexer.next().unwrap().unwrap();
