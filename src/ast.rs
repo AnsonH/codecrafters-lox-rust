@@ -37,7 +37,14 @@ impl<'src> Display for Literal<'src> {
         match self {
             Literal::Boolean(b) => write!(f, "{b}"),
             Literal::Nil => write!(f, "nil"),
-            Literal::Number(n) => write!(f, "{n}"),
+            Literal::Number(value) => {
+                if value.fract() == 0_f64 {
+                    // Tests requires integers to be print as N.0
+                    write!(f, "{value}.0")
+                } else {
+                    write!(f, "{value}")
+                }
+            }
             Literal::String(s) => write!(f, "{s}"),
         }
     }

@@ -44,6 +44,8 @@ impl<'src> Parser<'src> {
             Token::Keyword(Keyword::True) => Expr::Literal(Literal::Boolean(true)),
             Token::Keyword(Keyword::False) => Expr::Literal(Literal::Boolean(false)),
             Token::Keyword(Keyword::Nil) => Expr::Literal(Literal::Nil),
+            Token::Number { value, .. } => Expr::Literal(Literal::Number(value)),
+            Token::String(s) => Expr::Literal(Literal::String(s)),
             _ => todo!(),
         };
 
@@ -79,6 +81,9 @@ mod tests {
         assert_parsed_expression("true", "true");
         assert_parsed_expression("false", "false");
         assert_parsed_expression("nil", "nil");
+        assert_parsed_expression("1", "1.0");
+        assert_parsed_expression("42.47", "42.47");
+        assert_parsed_expression(r#""hello""#, "hello");
     }
 
     #[test]
