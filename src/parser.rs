@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 use crate::{
     ast::{Expr, Literal, Program},
     error::SyntaxError,
@@ -6,16 +8,13 @@ use crate::{
 };
 
 pub struct Parser<'src> {
-    /// The input program.
-    input: &'src str,
-    lexer: Lexer<'src>,
+    lexer: Peekable<Lexer<'src>>,
 }
 
 impl<'src> Parser<'src> {
     pub fn new(input: &'src str) -> Self {
         Self {
-            input,
-            lexer: Lexer::new(input),
+            lexer: Lexer::new(input).peekable(),
         }
     }
 
@@ -46,10 +45,32 @@ impl<'src> Parser<'src> {
             Token::Keyword(Keyword::Nil) => Expr::Literal(Literal::Nil),
             Token::Number { value, .. } => Expr::Literal(Literal::Number(value)),
             Token::String(s) => Expr::Literal(Literal::String(s)),
+            Token::LeftParen => {
+                let expr = self.parse_expression(0)?;
+                if self.expect(Token::RightParen).is_err() {
+                    return Err(SyntaxError::UnexpectedToken {
+                        expected: ')',
+                        span: todo!(),
+                    });
+                }
+                Expr::Grouping(Box::new(expr))
+            }
             _ => todo!(),
         };
 
         Ok(lhs)
+    }
+
+    /// Consumes the next token if it equals to `expected`.
+    fn expect(&mut self, expected: Token<'src>) -> Result<Token<'src>, ()> {
+        match self.lexer.peek() {
+            Some(Ok(token)) if *token == expected => {
+                let token = self.lexer.next().unwrap().unwrap();
+                Ok(token)
+            }
+            // TODO: Propagate `lexer.peek()`'s SyntaxError
+            _ => Err(()),
+        }
     }
 }
 
@@ -60,7 +81,7 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn assert_parsed_expression(input: &str, expected: &str) {
+    fn assert_parsed_expr(input: &str, expected: &str) {
         let mut parser = Parser::new(input);
         match parser.parse_expression(0) {
             Ok(expr) => assert_eq!(expr.to_string(), expected),
@@ -73,17 +94,22 @@ mod tests {
 
     #[test]
     fn test_empty() {
-        assert_parsed_expression("", "nil");
+        assert_parsed_expr("", "nil");
     }
 
     #[test]
     fn test_literal() {
-        assert_parsed_expression("true", "true");
-        assert_parsed_expression("false", "false");
-        assert_parsed_expression("nil", "nil");
-        assert_parsed_expression("1", "1.0");
-        assert_parsed_expression("42.47", "42.47");
-        assert_parsed_expression(r#""hello""#, "hello");
+        assert_parsed_expr("true", "true");
+        assert_parsed_expr("false", "false");
+        assert_parsed_expr("nil", "nil");
+        assert_parsed_expr("1", "1.0");
+        assert_parsed_expr("42.47", "42.47");
+        assert_parsed_expr(r#""hello""#, "hello");
+    }
+
+    #[test]
+    fn test_grouping() {
+        assert_parsed_expr(r#"("foo")"#, "(group foo)");
     }
 
     #[test]

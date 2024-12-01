@@ -11,13 +11,19 @@ pub enum ErrorFormat {
     Simple,
 }
 
-#[derive(thiserror::Error, Diagnostic, Debug, PartialEq)]
+#[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum SyntaxError {
     #[error("Unexpected character: {token}")]
     SingleTokenError {
         token: char,
-
         #[label("This character")]
+        span: SourceSpan,
+    },
+
+    #[error("Unexpected token, expecting '{expected}'")]
+    UnexpectedToken {
+        expected: char,
+        #[label("This token")]
         span: SourceSpan,
     },
 
@@ -48,6 +54,7 @@ impl SyntaxError {
     fn line_start(&self, source_code: &str) -> usize {
         let offset = match self {
             Self::SingleTokenError { span, .. } => span.offset(),
+            Self::UnexpectedToken { span, .. } => span.offset(),
             Self::UnterminatedStringError { span, .. } => span.offset(),
         };
 
