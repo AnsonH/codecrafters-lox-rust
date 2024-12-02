@@ -4,7 +4,7 @@ use crate::{
     ast::{Expr, Literal, Program},
     error::SyntaxError,
     lexer::Lexer,
-    token::TokenKind,
+    token::{Token, TokenKind, TokenValue},
 };
 
 pub struct Parser<'src> {
@@ -34,35 +34,58 @@ impl<'src> Parser<'src> {
     // TODO: Add docs
     pub fn parse_expression(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
         let lhs_token = match self.lexer.next() {
-            Some(Ok(TokenKind::Eof)) | None => return Ok(Expr::Literal(Literal::Nil)),
+            Some(Ok(Token {
+                kind: TokenKind::Eof,
+                ..
+            }))
+            | None => return Ok(Expr::Literal(Literal::Nil)),
             Some(Err(err)) => return Err(err),
             Some(Ok(token)) => token,
         };
 
-        let lhs = match lhs_token {
-            TokenKind::True => Expr::Literal(Literal::Boolean(true)),
-            TokenKind::False => Expr::Literal(Literal::Boolean(false)),
-            TokenKind::Nil => Expr::Literal(Literal::Nil),
-            // FIXME
-            // TokenKind::Number { value, .. } => Expr::Literal(Literal::Number(value)),
-            // TokenKind::String(s) => Expr::Literal(Literal::String(s)),
-            // TokenKind::LeftParen => {
-            //     let expr = self.parse_expression(0)?;
-            //     if self.expect(TokenKind::RightParen).is_err() {
-            //         todo!()
-            //     }
-            //     Expr::Grouping(Box::new(expr))
-            // }
+        let lhs_expr = match lhs_token {
+            Token {
+                kind: TokenKind::True,
+                ..
+            } => Expr::Literal(Literal::Boolean(true)),
+            Token {
+                kind: TokenKind::False,
+                ..
+            } => Expr::Literal(Literal::Boolean(false)),
+            Token {
+                kind: TokenKind::Nil,
+                ..
+            } => Expr::Literal(Literal::Nil),
+            Token {
+                kind: TokenKind::Number,
+                value: TokenValue::Number(n),
+                ..
+            } => Expr::Literal(Literal::Number(n)),
+            Token {
+                kind: TokenKind::String,
+                value: TokenValue::String(s),
+                ..
+            } => Expr::Literal(Literal::String(s)),
+            Token {
+                kind: TokenKind::LeftParen,
+                ..
+            } => {
+                let expr = self.parse_expression(0)?;
+                if self.expect(TokenKind::RightParen).is_err() {
+                    todo!()
+                }
+                Expr::Grouping(Box::new(expr))
+            }
             _ => todo!(),
         };
 
-        Ok(lhs)
+        Ok(lhs_expr)
     }
 
     /// Consumes the next token if it equals to `expected`.
-    fn expect(&mut self, expected: TokenKind) -> Result<TokenKind, ()> {
+    fn expect(&mut self, expected: TokenKind) -> Result<Token<'src>, ()> {
         match self.lexer.peek() {
-            Some(Ok(token)) if *token == expected => {
+            Some(Ok(token)) if token.kind == expected => {
                 let token = self.lexer.next().unwrap().unwrap();
                 Ok(token)
             }

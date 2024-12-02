@@ -1,16 +1,18 @@
+use std::{fmt::Display, ops::Range};
+
 use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token<'src> {
     /// Token kind.
-    kind: TokenKind,
+    pub kind: TokenKind,
     /// Byte offset range of the token in the source code.
-    span: Span,
+    pub span: Span,
     /// Token's value.
-    value: TokenValue<'src>,
+    pub value: TokenValue<'src>,
 }
 
-#[derive(Debug, Clone, PartialEq, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TokenKind {
     /// End of file
@@ -107,6 +109,28 @@ pub enum TokenValue<'src> {
     String(&'src str),
 }
 
+impl<'src> Token<'src> {
+    pub fn new(kind: TokenKind, span: Span, value: TokenValue<'src>) -> Self {
+        Self { kind, span, value }
+    }
+
+    /// Converts the token into a special format for passing [Lox's test
+    /// suite](https://github.com/munificent/craftinginterpreters/tree/master/test/scanning).
+    ///
+    /// # Format
+    ///
+    /// `<token_type> <lexeme> <value>`
+    /// - `<token_type>`: The type of the token
+    /// - `<lexeme>`: The actual sequence of characters that formed the token.
+    /// - `<literal>`: The literal value of the token
+    ///
+    /// Examples: `LEFT_PAREN ( null`, `STRING "foo" foo`
+    pub fn to_string(&self, source: &'src str) -> String {
+        let lexeme = source.get(Range::<usize>::from(self.span)).unwrap_or("");
+        format!("{} {} {}", self.kind, lexeme, self.value)
+    }
+}
+
 impl TokenKind {
     pub fn match_keyword(input: &str) -> Self {
         if input.len() > 6 {
@@ -134,6 +158,23 @@ impl TokenKind {
 
             "return" => TokenKind::Return,
             _ => TokenKind::Identifier,
+        }
+    }
+}
+
+impl<'src> Display for TokenValue<'src> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenValue::Number(n) => {
+                if n.fract() == 0_f64 {
+                    // Lox official test suite requires integers to be print as N.0
+                    write!(f, "{n}.0")
+                } else {
+                    write!(f, "{n}")
+                }
+            }
+            TokenValue::String(s) => write!(f, "{s}"),
+            _ => write!(f, "null"),
         }
     }
 }

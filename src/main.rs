@@ -7,7 +7,7 @@ use rust_lox::{
     error::{ErrorFormat, SyntaxError},
     lexer::Lexer,
     parser::Parser,
-    token::TokenKind,
+    token::Token,
 };
 
 enum ExitCode {
@@ -58,7 +58,7 @@ fn main() -> miette::Result<()> {
             let file_contents = read_file(filename)?;
 
             let mut has_errors = false;
-            let mut tokens: Vec<TokenKind> = vec![];
+            let mut tokens: Vec<Token> = vec![];
             let mut errors: Vec<SyntaxError> = vec![];
 
             let lexer = Lexer::new(&file_contents);
@@ -76,7 +76,7 @@ fn main() -> miette::Result<()> {
                 error.print_error(&file_contents, &cli.error_format);
             }
             for token in tokens {
-                println!("{token}");
+                println!("{}", token.to_string(&file_contents));
             }
             if has_errors {
                 std::process::exit(ExitCode::LexicalError as i32);

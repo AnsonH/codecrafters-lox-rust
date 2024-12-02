@@ -1,6 +1,8 @@
 use crate::error::SyntaxError;
-use crate::token::TokenKind;
+use crate::span::Span;
+use crate::token::{Token, TokenKind, TokenValue};
 use std::iter::Peekable;
+use std::ops::Range;
 use std::str::Chars;
 
 /// Lexer tokenizes an input string into a sequence of tokens.
@@ -101,7 +103,7 @@ enum Started {
 }
 
 impl<'src> Iterator for Lexer<'src> {
-    type Item = Result<TokenKind, SyntaxError>;
+    type Item = Result<Token<'src>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.position > self.input.len() {
@@ -112,23 +114,40 @@ impl<'src> Iterator for Lexer<'src> {
 
         loop {
             if self.rest_chars.peek().is_none() {
+                let eof_token = Some(Ok(Token::new(
+                    TokenKind::Eof,
+                    (self.position, self.position).into(),
+                    TokenValue::None,
+                )));
                 self.position += 1;
-                return Some(Ok(TokenKind::Eof));
+                return eof_token;
             }
 
             let (ch, ch_len) = self.read_char()?;
+            let curr_position = self.position;
+
+            let single_token = |kind: TokenKind| {
+                Some(Ok(Token::new(
+                    kind,
+                    // If we use `curr_position` instead of `self.position`,
+                    // the closure borrows `self` immutably. Then, we cannot call
+                    // `&mut self` methods due to borrow-checker rules.
+                    (curr_position - ch_len, curr_position).into(),
+                    TokenValue::None,
+                )))
+            };
 
             let started = match ch {
-                '(' => return Some(Ok(TokenKind::LeftParen)),
-                ')' => return Some(Ok(TokenKind::RightParen)),
-                '{' => return Some(Ok(TokenKind::LeftBrace)),
-                '}' => return Some(Ok(TokenKind::RightBrace)),
-                ',' => return Some(Ok(TokenKind::Comma)),
-                ';' => return Some(Ok(TokenKind::Semicolon)),
-                '.' => return Some(Ok(TokenKind::Dot)),
-                '+' => return Some(Ok(TokenKind::Plus)),
-                '-' => return Some(Ok(TokenKind::Minus)),
-                '*' => return Some(Ok(TokenKind::Star)),
+                '(' => return single_token(TokenKind::LeftParen),
+                ')' => return single_token(TokenKind::RightParen),
+                '{' => return single_token(TokenKind::LeftBrace),
+                '}' => return single_token(TokenKind::RightBrace),
+                ',' => return single_token(TokenKind::Comma),
+                ';' => return single_token(TokenKind::Semicolon),
+                '.' => return single_token(TokenKind::Dot),
+                '+' => return single_token(TokenKind::Plus),
+                '-' => return single_token(TokenKind::Minus),
+                '*' => return single_token(TokenKind::Star),
                 '/' => Started::Slash,
                 '=' => Started::MatchNextChar('=', TokenKind::EqualEqual, TokenKind::Equal),
                 '!' => Started::MatchNextChar('=', TokenKind::BangEqual, TokenKind::Bang),
@@ -150,10 +169,14 @@ impl<'src> Iterator for Lexer<'src> {
             break match started {
                 Started::MatchNextChar(to_match, matched, unmatched) => {
                     if self.is_peek_char(to_match) {
-                        self.read_char()?;
-                        Some(Ok(matched))
+                        let (_, matched_ch_len) = self.read_char()?;
+                        Some(Ok(Token::new(
+                            matched,
+                            (self.position - matched_ch_len - ch_len, self.position).into(),
+                            TokenValue::None,
+                        )))
                     } else {
-                        Some(Ok(unmatched))
+                        single_token(unmatched)
                     }
                 }
                 Started::Slash => {
@@ -162,7 +185,7 @@ impl<'src> Iterator for Lexer<'src> {
                         self.read_chars_while(|c| c != '\n');
                         continue;
                     } else {
-                        Some(Ok(TokenKind::Slash))
+                        single_token(TokenKind::Slash)
                     }
                 }
                 Started::String => {
@@ -170,10 +193,13 @@ impl<'src> Iterator for Lexer<'src> {
 
                     if self.is_peek_char('"') {
                         self.read_char(); // Consume ending `"``
-                        Some(Ok(TokenKind::String))
+                        Some(Ok(Token::new(
+                            TokenKind::String,
+                            (self.position - str_content_len - 2, self.position).into(),
+                            TokenValue::String(str_content),
+                        )))
                     } else {
                         Some(Err(SyntaxError::UnterminatedStringError {
-                            // The `1` below is the length of starting `"`
                             span: (self.position - str_content_len - 1, str_content_len + 1).into(),
                         }))
                     }
@@ -190,18 +216,26 @@ impl<'src> Iterator for Lexer<'src> {
                         self.read_chars_while(|c| c.is_ascii_digit());
                     }
 
-                    let raw: &str = self.input.get(start_pos..self.position)?;
+                    let span: Span = (start_pos, self.position).into();
+                    let raw = self.input.get(Range::<usize>::from(span))?;
                     let value: f64 = raw.parse().unwrap();
-                    Some(Ok(TokenKind::Number))
+
+                    Some(Ok(Token::new(
+                        TokenKind::Number,
+                        span,
+                        TokenValue::Number(value),
+                    )))
                 }
                 Started::IdentOrKeyword => {
                     let start_pos = self.position - ch_len; // since first char is consumed
 
                     self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
-                    let word = self.input.get(start_pos..self.position)?;
 
+                    let span: Span = (start_pos, self.position).into();
+                    let word = self.input.get(Range::<usize>::from(span))?;
                     let kind = TokenKind::match_keyword(word);
-                    Some(Ok(kind))
+
+                    Some(Ok(Token::new(kind, span, TokenValue::None)))
                 }
             };
         }
@@ -220,7 +254,7 @@ mod tests {
         let mut lexer = Lexer::new(input);
         for expected_token_str in expected {
             match lexer.next().unwrap() {
-                Ok(token) => assert_eq!(token.to_string(), *expected_token_str),
+                Ok(token) => assert_eq!(token.to_string(input), *expected_token_str),
                 Err(err) => {
                     err.print_error(input, &ErrorFormat::Pretty);
                     panic!("Encountered a SyntaxError");
@@ -231,7 +265,7 @@ mod tests {
     }
 
     /// Asserts the output of `lexer.next()` equals the `expected` [SyntaxError]
-    fn assert_syntax_error(input: Option<Result<TokenKind, SyntaxError>>, expected: &SyntaxError) {
+    fn assert_syntax_error(input: Option<Result<Token, SyntaxError>>, expected: &SyntaxError) {
         let error = input.unwrap().expect_err("should be a SyntaxError");
         assert_eq!(error, *expected);
     }
@@ -260,7 +294,14 @@ mod tests {
         assert_eq!(lexer.position, 7);
 
         // Next token is EOF
-        assert_eq!(lexer.next().unwrap().unwrap(), TokenKind::Eof);
+        assert_eq!(
+            lexer.next(),
+            Some(Ok(Token::new(
+                TokenKind::Eof,
+                (7, 7).into(),
+                TokenValue::None
+            )))
+        );
         assert!(lexer.next().is_none());
     }
 
@@ -528,16 +569,16 @@ mod tests {
         let input = r#",.$("#;
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), TokenKind::Comma);
-        assert_eq!(lexer.next().unwrap().unwrap(), TokenKind::Dot);
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Comma);
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
         assert_syntax_error(
             lexer.next(),
             &SyntaxError::SingleTokenError {
                 token: '$',
-                span: (2, 1).into(),
+                span: (2, 1).into(), // (offset, length)
             },
         );
-        assert_eq!(lexer.next().unwrap().unwrap(), TokenKind::LeftParen);
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
     }
 
     #[test]
@@ -545,7 +586,7 @@ mod tests {
         let input = r#"."bar"#;
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), TokenKind::Dot);
+        assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::Dot);
         assert_syntax_error(
             lexer.next(),
             &SyntaxError::UnterminatedStringError {

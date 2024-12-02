@@ -56,10 +56,17 @@ impl Display for Span {
     }
 }
 
-impl From<Range<u32>> for Span {
+impl From<(usize, usize)> for Span {
     #[inline]
-    fn from(range: Range<u32>) -> Self {
-        Self::new(range.start, range.end)
+    fn from(value: (usize, usize)) -> Self {
+        Self::new(value.0 as u32, value.1 as u32)
+    }
+}
+
+impl From<Span> for Range<usize> {
+    #[inline]
+    fn from(span: Span) -> Self {
+        span.start as usize..span.end as usize
     }
 }
 
@@ -70,6 +77,7 @@ impl From<Span> for miette::SourceSpan {
     }
 }
 
+/// Enables `&input[span]`
 impl Index<Span> for str {
     type Output = str;
 
@@ -93,9 +101,14 @@ mod tests {
 
     #[test]
     fn test_conversion() {
-        // Range -> Span
-        let span: Span = (2..8).into();
+        // (usize, usize) -> Span
+        let input: (usize, usize) = (2, 8);
+        let span: Span = input.into();
         assert_eq!(span, Span::new(2, 8));
+
+        // Span -> Range<usize>
+        let range: Range<usize> = Span::new(2, 8).into();
+        assert_eq!(range, 2..8);
 
         // Span -> miette::SourceSpan
         let source_span: miette::SourceSpan = Span::new(2, 8).into();
@@ -103,9 +116,11 @@ mod tests {
     }
 
     #[test]
-    fn test_index() {
+    fn test_slice_string() {
         let input = "foo bar baz";
         let span = Span::new(4, 7);
+
         assert_eq!(&input[span], "bar");
+        assert_eq!(input.get(Range::<usize>::from(span)), Some("bar"));
     }
 }
