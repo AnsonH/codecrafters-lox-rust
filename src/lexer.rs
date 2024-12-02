@@ -12,8 +12,8 @@ use std::str::Chars;
 /// The `'src` lifetime ensures both the `input` and `rest_chars` are tied to the
 /// same lifetime, i.e. they both reference the same string source.
 pub struct Lexer<'src> {
-    /// The input program.
-    input: &'src str,
+    /// The input source code.
+    source: &'src str,
     /// Remaining characters of the input that the lexer hasn't scanned.
     ///
     /// [Peekable] is useful for peeking into future characters without consuming them.
@@ -23,10 +23,10 @@ pub struct Lexer<'src> {
 }
 
 impl<'src> Lexer<'src> {
-    pub fn new(input: &'src str) -> Self {
+    pub fn new(source: &'src str) -> Self {
         Lexer {
-            input,
-            rest_chars: input.chars().peekable(),
+            source,
+            rest_chars: source.chars().peekable(),
             position: 0,
         }
     }
@@ -66,7 +66,7 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        let matched_str = &self.input[start_pos..self.position];
+        let matched_str = &self.source[start_pos..self.position];
         let total_len = self.position - start_pos;
         (matched_str, total_len)
     }
@@ -106,7 +106,7 @@ impl<'src> Iterator for Lexer<'src> {
     type Item = Result<Token<'src>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.position > self.input.len() {
+        if self.position > self.source.len() {
             // After EOF token is emitted, we "stop" the iterator by returning `None`.
             // Rust will stop the `for token in lexer {}` loop if `.next()` returns `None`.
             return None;
@@ -217,7 +217,7 @@ impl<'src> Iterator for Lexer<'src> {
                     }
 
                     let span: Span = (start_pos, self.position).into();
-                    let raw = self.input.get(Range::<usize>::from(span))?;
+                    let raw = self.source.get(Range::<usize>::from(span))?;
                     let value: f64 = raw.parse().unwrap();
 
                     Some(Ok(Token::new(
@@ -232,7 +232,7 @@ impl<'src> Iterator for Lexer<'src> {
                     self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
 
                     let span: Span = (start_pos, self.position).into();
-                    let word = self.input.get(Range::<usize>::from(span))?;
+                    let word = self.source.get(Range::<usize>::from(span))?;
                     let kind = TokenKind::match_keyword(word);
 
                     Some(Ok(Token::new(kind, span, TokenValue::None)))

@@ -12,9 +12,9 @@ pub struct Parser<'src> {
 }
 
 impl<'src> Parser<'src> {
-    pub fn new(input: &'src str) -> Self {
+    pub fn new(source: &'src str) -> Self {
         Self {
-            lexer: Lexer::new(input).peekable(),
+            lexer: Lexer::new(source).peekable(),
         }
     }
 

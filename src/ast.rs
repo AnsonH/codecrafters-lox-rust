@@ -1,3 +1,5 @@
+//! The Abstract Syntax Tree (AST) of Lox.
+
 use std::fmt::Display;
 
 /// Root AST node that represents the whole program.

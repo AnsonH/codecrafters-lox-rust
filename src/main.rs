@@ -55,13 +55,13 @@ fn main() -> miette::Result<()> {
 
     match &cli.command {
         Commands::Tokenize { filename } => {
-            let file_contents = read_file(filename)?;
+            let source = read_file(filename)?;
 
             let mut has_errors = false;
             let mut tokens: Vec<Token> = vec![];
             let mut errors: Vec<SyntaxError> = vec![];
 
-            let lexer = Lexer::new(&file_contents);
+            let lexer = Lexer::new(&source);
             for token in lexer {
                 match token {
                     Ok(t) => tokens.push(t),
@@ -73,23 +73,23 @@ fn main() -> miette::Result<()> {
             }
 
             for error in errors {
-                error.print_error(&file_contents, &cli.error_format);
+                error.print_error(&source, &cli.error_format);
             }
             for token in tokens {
-                println!("{}", token.to_string(&file_contents));
+                println!("{}", token.to_string(&source));
             }
             if has_errors {
                 std::process::exit(ExitCode::LexicalError as i32);
             }
         }
         Commands::Parse { filename } => {
-            let file_contents = read_file(filename)?;
+            let source = read_file(filename)?;
 
-            let mut parser = Parser::new(&file_contents);
+            let mut parser = Parser::new(&source);
             match parser.parse_expression(0) {
                 Ok(expr) => println!("{expr}"),
                 Err(err) => {
-                    err.print_error(&file_contents, &cli.error_format);
+                    err.print_error(&source, &cli.error_format);
                     std::process::exit(ExitCode::LexicalError as i32);
                 }
             }
