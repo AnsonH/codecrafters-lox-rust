@@ -85,8 +85,8 @@ fn main() -> miette::Result<()> {
         Commands::Parse { filename } => {
             let source = read_file(filename)?;
 
-            let mut parser = Parser::new(&source);
-            match parser.parse_expression(0) {
+            let parser = Parser::new(&source);
+            match parser.parse_expression() {
                 Ok(expr) => println!("{expr}"),
                 Err(err) => {
                     err.print_error(&source, &cli.error_format);

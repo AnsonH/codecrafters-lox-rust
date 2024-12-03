@@ -8,18 +8,12 @@ use super::Parser;
 
 impl<'src> Parser<'src> {
     // TODO: Add docs
-    pub fn parse_expression(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
-        let lhs_token = match self.lexer.next() {
-            Some(Ok(Token {
+    pub(crate) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
+        let lhs_expr = match self.cur_token() {
+            Token {
                 kind: TokenKind::Eof,
                 ..
-            }))
-            | None => return Ok(Expr::Literal(Literal::Nil)),
-            Some(Err(err)) => return Err(err),
-            Some(Ok(token)) => token,
-        };
-
-        let lhs_expr = match lhs_token {
+            } => return Ok(Expr::Literal(Literal::Nil)),
             Token {
                 kind: TokenKind::True,
                 ..
@@ -46,7 +40,12 @@ impl<'src> Parser<'src> {
                 kind: TokenKind::LeftParen,
                 ..
             } => {
-                let expr = self.parse_expression(0)?;
+                // self.expect(Kind::LParen)?;
+                // let expr = self.parse_expr(0)?;
+                // self.expect(Kind::RParen)?;
+                self.advance()?;
+                let expr = self.parse_expr(0)?;
+                // TODO: Replace with `self.expect(TokenKind::RightParen)?`
                 if self.expect(TokenKind::RightParen).is_err() {
                     todo!()
                 }
@@ -56,6 +55,10 @@ impl<'src> Parser<'src> {
         };
 
         Ok(lhs_expr)
+    }
+
+    pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
+        todo!()
     }
 }
 
@@ -67,8 +70,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn assert_parsed_expr(input: &str, expected: &str) {
-        let mut parser = Parser::new(input);
-        match parser.parse_expression(0) {
+        let parser = Parser::new(input);
+        match parser.parse_expression() {
             Ok(expr) => assert_eq!(expr.to_string(), expected),
             Err(err) => {
                 err.print_error(input, &ErrorFormat::Pretty);

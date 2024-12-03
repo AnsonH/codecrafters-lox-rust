@@ -2,7 +2,9 @@ use std::{fmt::Display, ops::Range};
 
 use crate::span::Span;
 
-#[derive(Debug, Clone, PartialEq)]
+// TODO: Remove `value` from Token to reduce struct size, only parse value using
+// util functions when necessary during parsing
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Token<'src> {
     /// Token kind.
     pub kind: TokenKind,
@@ -12,10 +14,11 @@ pub struct Token<'src> {
     pub value: TokenValue<'src>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TokenKind {
     /// End of file
+    #[default]
     Eof,
 
     /// `(`
@@ -98,8 +101,9 @@ pub enum TokenKind {
 /// enum's size from being larger than 1 byte. There will be heavy usages of
 /// [TokenKind] in the parser, so it is more memory efficient
 /// ([reference](https://oxc.rs/docs/learn/parser_in_rust/lexer.html#smaller-tokens)).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum TokenValue<'src> {
+    #[default]
     None,
     Boolean(bool),
     Number(f64),
