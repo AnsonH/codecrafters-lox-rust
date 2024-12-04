@@ -48,6 +48,23 @@ impl Span {
     pub const fn is_empty(&self) -> bool {
         self.start == self.end
     }
+
+    /// Creates a [Span] that has its start and end positions shrunk by `offset`
+    /// amount.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rust_lox::span::Span;
+    /// let span = Span::new(4, 10);
+    /// assert_eq!(span.shrink(2), Span::new(6, 8));
+    /// ```
+    pub fn shrink(self, offset: u32) -> Self {
+        let start = self.start + offset;
+        let end = self.end - offset;
+        debug_assert!(start <= end, "Cannot shrink span past zero length");
+        Self::new(start, end)
+    }
 }
 
 impl Display for Span {

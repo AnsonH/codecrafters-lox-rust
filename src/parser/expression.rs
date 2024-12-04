@@ -1,7 +1,9 @@
+use std::ops::Range;
+
 use crate::{
     ast::{Expr, Literal},
     error::SyntaxError,
-    token::{Token, TokenKind, TokenValue},
+    token::TokenKind,
 };
 
 use super::Parser;
@@ -9,37 +11,10 @@ use super::Parser;
 impl<'src> Parser<'src> {
     // TODO: Add docs
     pub(crate) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
-        let lhs_expr = match self.cur_token() {
-            Token {
-                kind: TokenKind::Eof,
-                ..
-            } => return Ok(Expr::Literal(Literal::Nil)),
-            Token {
-                kind: TokenKind::True,
-                ..
-            } => Expr::Literal(Literal::Boolean(true)),
-            Token {
-                kind: TokenKind::False,
-                ..
-            } => Expr::Literal(Literal::Boolean(false)),
-            Token {
-                kind: TokenKind::Nil,
-                ..
-            } => Expr::Literal(Literal::Nil),
-            Token {
-                kind: TokenKind::Number,
-                value: TokenValue::Number(n),
-                ..
-            } => Expr::Literal(Literal::Number(n)),
-            Token {
-                kind: TokenKind::String,
-                value: TokenValue::String(s),
-                ..
-            } => Expr::Literal(Literal::String(s)),
-            Token {
-                kind: TokenKind::LeftParen,
-                ..
-            } => {
+        let lhs_expr = match self.cur_kind() {
+            TokenKind::Eof => return Ok(Expr::Literal(Literal::Nil)),
+            kind if kind.is_literal() => self.parse_literal_expression()?,
+            TokenKind::LeftParen => {
                 // self.expect(Kind::LParen)?;
                 // let expr = self.parse_expr(0)?;
                 // self.expect(Kind::RParen)?;
@@ -58,7 +33,26 @@ impl<'src> Parser<'src> {
     }
 
     pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
-        todo!()
+        match self.cur_kind() {
+            TokenKind::Nil => Ok(Expr::Literal(Literal::Nil)),
+            TokenKind::True => Ok(Expr::Literal(Literal::Boolean(true))),
+            TokenKind::False => Ok(Expr::Literal(Literal::Boolean(false))),
+            TokenKind::Number => {
+                let raw_number = self.cur_src();
+                let value: f64 = raw_number.parse().unwrap();
+                Ok(Expr::Literal(Literal::Number(value)))
+            }
+            TokenKind::String => {
+                // The token span includes the `"` quotes, so exclude them
+                let span_without_quotes = self.cur_token().span.shrink(1);
+                let value = self
+                    .source
+                    .get(Range::<usize>::from(span_without_quotes))
+                    .unwrap();
+                Ok(Expr::Literal(Literal::String(value)))
+            }
+            _ => unreachable!(),
+        }
     }
 }
 

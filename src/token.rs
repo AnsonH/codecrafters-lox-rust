@@ -136,6 +136,17 @@ impl<'src> Token<'src> {
 }
 
 impl TokenKind {
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            TokenKind::Nil
+                | TokenKind::True
+                | TokenKind::False
+                | TokenKind::Number
+                | TokenKind::String
+        )
+    }
+
     pub fn match_keyword(input: &str) -> Self {
         if input.len() > 6 {
             return TokenKind::Identifier;

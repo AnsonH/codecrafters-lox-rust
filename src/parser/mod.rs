@@ -2,7 +2,7 @@
 
 mod expression;
 
-use std::iter::Peekable;
+use std::{iter::Peekable, ops::Range};
 
 use crate::{
     ast::Expr,
@@ -12,7 +12,11 @@ use crate::{
 };
 
 pub struct Parser<'src> {
+    /// Source code.
+    source: &'src str,
+
     lexer: Peekable<Lexer<'src>>,
+
     /// The current token that the lexer is at.
     token: Token<'src>,
 }
@@ -20,6 +24,7 @@ pub struct Parser<'src> {
 impl<'src> Parser<'src> {
     pub fn new(source: &'src str) -> Self {
         Self {
+            source,
             lexer: Lexer::new(source).peekable(),
             token: Token::default(),
         }
@@ -38,10 +43,22 @@ impl<'src> Parser<'src> {
         Ok(())
     }
 
+    /// Get current token's kind.
+    #[inline]
+    pub(crate) fn cur_kind(&self) -> TokenKind {
+        self.token.kind
+    }
+
     /// Get current token.
     #[inline]
     pub(crate) fn cur_token(&self) -> Token<'src> {
         self.token
+    }
+
+    /// Get current token's source text.
+    pub(crate) fn cur_src(&self) -> &'src str {
+        let span = self.cur_token().span;
+        self.source.get(Range::<usize>::from(span)).unwrap()
     }
 
     /// Consumes the next token if it equals to `expected`.
