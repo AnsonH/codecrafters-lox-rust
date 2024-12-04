@@ -1,7 +1,5 @@
 //! Tokens for the Lox language.
 
-use std::ops::Range;
-
 use crate::span::Span;
 
 /// A token of the Lox language.
@@ -113,7 +111,7 @@ impl Token {
     ///
     /// Examples: `LEFT_PAREN ( null`, `STRING "foo" foo`
     pub fn to_string(&self, source: &str) -> String {
-        let lexeme = source.get(Range::<usize>::from(self.span)).unwrap_or("");
+        let lexeme = &source[self.span];
         format!("{} {} {}", self.kind, lexeme, self.literal_value(source))
     }
 
@@ -124,7 +122,7 @@ impl Token {
     fn literal_value(&self, source: &str) -> String {
         match self.kind {
             TokenKind::Number => {
-                let raw_number = source.get(Range::<usize>::from(self.span)).unwrap();
+                let raw_number = &source[self.span];
                 let value: f64 = raw_number.parse().unwrap();
                 if value.fract() == 0_f64 {
                     // Lox official test suite requires integers to be print as N.0
@@ -135,7 +133,7 @@ impl Token {
             }
             TokenKind::String => {
                 let value_span = self.span.shrink(1);
-                let value = source.get(Range::<usize>::from(value_span)).unwrap();
+                let value = &source[value_span];
                 value.to_string()
             }
             _ => "null".to_string(),

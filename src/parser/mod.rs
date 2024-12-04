@@ -2,7 +2,7 @@
 
 mod expression;
 
-use std::{iter::Peekable, ops::Range};
+use std::iter::Peekable;
 
 use crate::{
     ast::Expr,
@@ -56,9 +56,10 @@ impl<'src> Parser<'src> {
     }
 
     /// Get current token's source text.
+    #[inline]
     pub(crate) fn cur_src(&self) -> &'src str {
-        let span = self.cur_token().span;
-        self.source.get(Range::<usize>::from(span)).unwrap()
+        // Safety: the lexer ensures that the span is not out of range
+        &self.source[self.cur_token().span]
     }
 
     /// Consumes the next token if it equals to `expected`.

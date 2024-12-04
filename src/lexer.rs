@@ -2,7 +2,6 @@ use crate::error::SyntaxError;
 use crate::span::Span;
 use crate::token::{Token, TokenKind};
 use std::iter::Peekable;
-use std::ops::Range;
 use std::str::Chars;
 
 /// Lexer tokenizes an input string into a sequence of tokens.
@@ -221,7 +220,7 @@ impl<'src> Iterator for Lexer<'src> {
                     self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
 
                     let span: Span = (start_pos, self.position).into();
-                    let word = self.source.get(Range::<usize>::from(span))?;
+                    let word = &self.source[span];
                     let kind = TokenKind::match_keyword(word);
 
                     Some(Ok(Token::new(kind, span)))

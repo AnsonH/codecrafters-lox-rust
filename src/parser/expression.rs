@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use crate::{
     ast::{Expr, Literal},
     error::SyntaxError,
@@ -45,10 +43,7 @@ impl<'src> Parser<'src> {
             TokenKind::String => {
                 // The token span includes the `"` quotes, so exclude them
                 let span_without_quotes = self.cur_token().span.shrink(1);
-                let value = self
-                    .source
-                    .get(Range::<usize>::from(span_without_quotes))
-                    .unwrap();
+                let value = &self.source[span_without_quotes];
                 Ok(Expr::Literal(Literal::String(value)))
             }
             _ => unreachable!(),
