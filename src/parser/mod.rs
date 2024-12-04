@@ -18,7 +18,7 @@ pub struct Parser<'src> {
     lexer: Peekable<Lexer<'src>>,
 
     /// The current token that the lexer is at.
-    token: Token<'src>,
+    token: Token,
 }
 
 impl<'src> Parser<'src> {
@@ -51,7 +51,7 @@ impl<'src> Parser<'src> {
 
     /// Get current token.
     #[inline]
-    pub(crate) fn cur_token(&self) -> Token<'src> {
+    pub(crate) fn cur_token(&self) -> Token {
         self.token
     }
 
@@ -62,7 +62,7 @@ impl<'src> Parser<'src> {
     }
 
     /// Consumes the next token if it equals to `expected`.
-    pub(crate) fn expect(&mut self, expected: TokenKind) -> Result<Token<'src>, ()> {
+    pub(crate) fn expect(&mut self, expected: TokenKind) -> Result<Token, ()> {
         match self.lexer.peek() {
             Some(Ok(token)) if token.kind == expected => {
                 let token = self.lexer.next().unwrap().unwrap();

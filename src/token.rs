@@ -1,17 +1,20 @@
-use std::{fmt::Display, ops::Range};
+//! Tokens for the Lox language.
+
+use std::ops::Range;
 
 use crate::span::Span;
 
-// TODO: Remove `value` from Token to reduce struct size, only parse value using
-// util functions when necessary during parsing
+/// A token of the Lox language.
+///
+/// Design note: There is no need to store the token's value here. Value parsing
+/// is done in the parser, and the value is stored in the Abstract Syntax Tree.
+/// It is memory inefficient to add a new "value" field here.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct Token<'src> {
+pub struct Token {
     /// Token kind.
     pub kind: TokenKind,
     /// Byte offset range of the token in the source code.
     pub span: Span,
-    /// Token's value.
-    pub value: TokenValue<'src>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::Display)]
@@ -93,29 +96,9 @@ pub enum TokenKind {
     While,
 }
 
-/// The token's value.
-///
-/// # Optimization
-///
-/// We do not store token's value inside [TokenKind] because it prevents that
-/// enum's size from being larger than 1 byte. There will be heavy usages of
-/// [TokenKind] in the parser, so it is more memory efficient
-/// ([reference](https://oxc.rs/docs/learn/parser_in_rust/lexer.html#smaller-tokens)).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub enum TokenValue<'src> {
-    #[default]
-    None,
-    Boolean(bool),
-    Number(f64),
-    /// Since Lox does not support escape sequences like `\n`, we don't need to
-    /// allocate a new string to store the computed escaped string. Thus, we can
-    /// directly reference the source text.
-    String(&'src str),
-}
-
-impl<'src> Token<'src> {
-    pub fn new(kind: TokenKind, span: Span, value: TokenValue<'src>) -> Self {
-        Self { kind, span, value }
+impl Token {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Self { kind, span }
     }
 
     /// Converts the token into a special format for passing [Lox's test
@@ -129,9 +112,34 @@ impl<'src> Token<'src> {
     /// - `<literal>`: The literal value of the token
     ///
     /// Examples: `LEFT_PAREN ( null`, `STRING "foo" foo`
-    pub fn to_string(&self, source: &'src str) -> String {
+    pub fn to_string(&self, source: &str) -> String {
         let lexeme = source.get(Range::<usize>::from(self.span)).unwrap_or("");
-        format!("{} {} {}", self.kind, lexeme, self.value)
+        format!("{} {} {}", self.kind, lexeme, self.literal_value(source))
+    }
+
+    /// Gets the literal value of the token.
+    ///
+    /// Only string and number has a literal value. Other tokens have the value
+    /// of `null`.
+    fn literal_value(&self, source: &str) -> String {
+        match self.kind {
+            TokenKind::Number => {
+                let raw_number = source.get(Range::<usize>::from(self.span)).unwrap();
+                let value: f64 = raw_number.parse().unwrap();
+                if value.fract() == 0_f64 {
+                    // Lox official test suite requires integers to be print as N.0
+                    format!("{value}.0")
+                } else {
+                    format!("{value}")
+                }
+            }
+            TokenKind::String => {
+                let value_span = self.span.shrink(1);
+                let value = source.get(Range::<usize>::from(value_span)).unwrap();
+                value.to_string()
+            }
+            _ => "null".to_string(),
+        }
     }
 }
 
@@ -173,23 +181,6 @@ impl TokenKind {
 
             "return" => TokenKind::Return,
             _ => TokenKind::Identifier,
-        }
-    }
-}
-
-impl<'src> Display for TokenValue<'src> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TokenValue::Number(n) => {
-                if n.fract() == 0_f64 {
-                    // Lox official test suite requires integers to be print as N.0
-                    write!(f, "{n}.0")
-                } else {
-                    write!(f, "{n}")
-                }
-            }
-            TokenValue::String(s) => write!(f, "{s}"),
-            _ => write!(f, "null"),
         }
     }
 }

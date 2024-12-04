@@ -1,6 +1,6 @@
 use crate::error::SyntaxError;
 use crate::span::Span;
-use crate::token::{Token, TokenKind, TokenValue};
+use crate::token::{Token, TokenKind};
 use std::iter::Peekable;
 use std::ops::Range;
 use std::str::Chars;
@@ -103,7 +103,7 @@ enum Started {
 }
 
 impl<'src> Iterator for Lexer<'src> {
-    type Item = Result<Token<'src>, SyntaxError>;
+    type Item = Result<Token, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.position > self.source.len() {
@@ -117,7 +117,6 @@ impl<'src> Iterator for Lexer<'src> {
                 let eof_token = Some(Ok(Token::new(
                     TokenKind::Eof,
                     (self.position, self.position).into(),
-                    TokenValue::None,
                 )));
                 self.position += 1;
                 return eof_token;
@@ -133,7 +132,6 @@ impl<'src> Iterator for Lexer<'src> {
                     // the closure borrows `self` immutably. Then, we cannot call
                     // `&mut self` methods due to borrow-checker rules.
                     (curr_position - ch_len, curr_position).into(),
-                    TokenValue::None,
                 )))
             };
 
@@ -173,7 +171,6 @@ impl<'src> Iterator for Lexer<'src> {
                         Some(Ok(Token::new(
                             matched,
                             (self.position - matched_ch_len - ch_len, self.position).into(),
-                            TokenValue::None,
                         )))
                     } else {
                         single_token(unmatched)
@@ -189,14 +186,13 @@ impl<'src> Iterator for Lexer<'src> {
                     }
                 }
                 Started::String => {
-                    let (str_content, str_content_len) = { self.read_chars_while(|c| c != '"') };
+                    let (_, str_content_len) = self.read_chars_while(|c| c != '"');
 
                     if self.is_peek_char('"') {
                         self.read_char(); // Consume ending `"``
                         Some(Ok(Token::new(
                             TokenKind::String,
                             (self.position - str_content_len - 2, self.position).into(),
-                            TokenValue::String(str_content),
                         )))
                     } else {
                         Some(Err(SyntaxError::UnterminatedStringError {
@@ -217,14 +213,7 @@ impl<'src> Iterator for Lexer<'src> {
                     }
 
                     let span: Span = (start_pos, self.position).into();
-                    let raw = self.source.get(Range::<usize>::from(span))?;
-                    let value: f64 = raw.parse().unwrap();
-
-                    Some(Ok(Token::new(
-                        TokenKind::Number,
-                        span,
-                        TokenValue::Number(value),
-                    )))
+                    Some(Ok(Token::new(TokenKind::Number, span)))
                 }
                 Started::IdentOrKeyword => {
                     let start_pos = self.position - ch_len; // since first char is consumed
@@ -235,7 +224,7 @@ impl<'src> Iterator for Lexer<'src> {
                     let word = self.source.get(Range::<usize>::from(span))?;
                     let kind = TokenKind::match_keyword(word);
 
-                    Some(Ok(Token::new(kind, span, TokenValue::None)))
+                    Some(Ok(Token::new(kind, span)))
                 }
             };
         }
@@ -296,11 +285,7 @@ mod tests {
         // Next token is EOF
         assert_eq!(
             lexer.next(),
-            Some(Ok(Token::new(
-                TokenKind::Eof,
-                (7, 7).into(),
-                TokenValue::None
-            )))
+            Some(Ok(Token::new(TokenKind::Eof, (7, 7).into(),)))
         );
         assert!(lexer.next().is_none());
     }
