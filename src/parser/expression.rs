@@ -12,20 +12,22 @@ impl<'src> Parser<'src> {
         let lhs_expr = match self.cur_kind() {
             kind if kind.is_literal() => self.parse_literal_expression()?,
             kind if kind.is_unary_operator() => self.parse_unary_expression()?,
-            TokenKind::LeftParen => {
-                self.advance()?; // Consume `(`
-                let expr = self.parse_expr(0)?;
-                // TODO: Replace with `self.expect(TokenKind::RightParen)?`
-                if self.expect(TokenKind::RightParen).is_err() {
-                    todo!()
-                }
-                Expr::Grouping(Box::new(expr))
-            }
+            TokenKind::LeftParen => self.parse_grouping_expression()?,
             TokenKind::Eof => return Ok(Expr::Literal(Literal::Nil)),
             _ => todo!(),
         };
 
         Ok(lhs_expr)
+    }
+
+    pub(crate) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
+        self.advance()?; // Consume `(`
+        let expr = self.parse_expr(0)?;
+        // TODO: Replace with `self.expect(TokenKind::RightParen)?`
+        if self.expect(TokenKind::RightParen).is_err() {
+            todo!()
+        }
+        Ok(Expr::Grouping(Box::new(expr)))
     }
 
     pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
@@ -114,6 +116,8 @@ mod tests {
         assert_parsed_expr("!true", "(! true)");
         assert_parsed_expr("-5", "(- 5.0)");
         assert_parsed_expr("!-5", "(! (- 5.0))");
+
+        assert_parsed_expr("(!!(false))", "(group (! (! (group false))))");
     }
 
     #[test]

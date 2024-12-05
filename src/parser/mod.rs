@@ -70,6 +70,7 @@ impl<'src> Parser<'src> {
                 let token = self.lexer.next().unwrap().unwrap();
                 Ok(token)
             }
+            // TODO: Add "expected token" error
             // TODO: Propagate `lexer.peek()`'s SyntaxError
             _ => Err(()),
         }
