@@ -8,7 +8,7 @@ use std::str::Chars;
 ///
 /// # Lifetimes
 ///
-/// The `'src` lifetime ensures both the `input` and `rest_chars` are tied to the
+/// The `'src` lifetime ensures both the `source` and `rest_chars` are tied to the
 /// same lifetime, i.e. they both reference the same string source.
 pub struct Lexer<'src> {
     /// The input source code.

@@ -153,6 +153,10 @@ impl TokenKind {
         )
     }
 
+    pub fn is_unary_operator(&self) -> bool {
+        matches!(self, TokenKind::Minus | TokenKind::Bang)
+    }
+
     pub fn match_keyword(input: &str) -> Self {
         if input.len() > 6 {
             return TokenKind::Identifier;

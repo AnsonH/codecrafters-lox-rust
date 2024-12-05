@@ -18,6 +18,8 @@ pub enum Expr<'src> {
     Literal(Literal<'src>),
     /// A grouped expression using parenthesis (e.g. `("foo")`).
     Grouping(Box<Expr<'src>>),
+    /// Unary expression (e.g. `-5`, `!true`)
+    Unary(UnaryOperator, Box<Expr<'src>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,11 +30,20 @@ pub enum Literal<'src> {
     String(&'src str),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, strum::Display)]
+pub enum UnaryOperator {
+    #[strum(to_string = "!")]
+    LogicalNot,
+    #[strum(to_string = "-")]
+    UnaryMinus,
+}
+
 impl<'src> Display for Expr<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expr::Literal(literal) => write!(f, "{literal}"),
             Expr::Grouping(expr) => write!(f, "(group {expr})"),
+            Expr::Unary(operator, right) => write!(f, "({operator} {right})"),
         }
     }
 }

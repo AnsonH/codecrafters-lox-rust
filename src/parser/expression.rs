@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expr, Literal},
+    ast::{Expr, Literal, UnaryOperator},
     error::SyntaxError,
     token::TokenKind,
 };
@@ -10,13 +10,10 @@ impl<'src> Parser<'src> {
     // TODO: Add docs
     pub(crate) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
         let lhs_expr = match self.cur_kind() {
-            TokenKind::Eof => return Ok(Expr::Literal(Literal::Nil)),
             kind if kind.is_literal() => self.parse_literal_expression()?,
+            kind if kind.is_unary_operator() => self.parse_unary_expression()?,
             TokenKind::LeftParen => {
-                // self.expect(Kind::LParen)?;
-                // let expr = self.parse_expr(0)?;
-                // self.expect(Kind::RParen)?;
-                self.advance()?;
+                self.advance()?; // Consume `(`
                 let expr = self.parse_expr(0)?;
                 // TODO: Replace with `self.expect(TokenKind::RightParen)?`
                 if self.expect(TokenKind::RightParen).is_err() {
@@ -24,6 +21,7 @@ impl<'src> Parser<'src> {
                 }
                 Expr::Grouping(Box::new(expr))
             }
+            TokenKind::Eof => return Ok(Expr::Literal(Literal::Nil)),
             _ => todo!(),
         };
 
@@ -46,8 +44,29 @@ impl<'src> Parser<'src> {
                 let value = &self.source[span_without_quotes];
                 Ok(Expr::Literal(Literal::String(value)))
             }
-            _ => unreachable!(),
+            _ => unreachable!("unexpected literal kind: {}", self.cur_kind()),
         }
+    }
+
+    pub(crate) fn parse_unary_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
+        let operator = match self.cur_kind() {
+            TokenKind::Minus => UnaryOperator::UnaryMinus,
+            TokenKind::Bang => UnaryOperator::LogicalNot,
+            _ => unreachable!("unexpected unary operator: {}", self.cur_kind()),
+        };
+        self.advance()?;
+
+        let (_, rhs_prec) = unary_precedence(operator);
+        let right = self.parse_expr(rhs_prec)?;
+        Ok(Expr::Unary(operator, Box::new(right)))
+    }
+}
+
+// TODO: Replace with enum
+// TODO: Move precedence to a new file (preferably same folder as AST)
+pub(crate) fn unary_precedence(op: UnaryOperator) -> ((), u8) {
+    match op {
+        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 5),
     }
 }
 
@@ -87,6 +106,14 @@ mod tests {
     #[test]
     fn test_grouping() {
         assert_parsed_expr(r#"("foo")"#, "(group foo)");
+        assert_parsed_expr(r#"(("foo"))"#, "(group (group foo))");
+    }
+
+    #[test]
+    fn test_unary_expression() {
+        assert_parsed_expr("!true", "(! true)");
+        assert_parsed_expr("-5", "(- 5.0)");
+        assert_parsed_expr("!-5", "(! (- 5.0))");
     }
 
     #[test]
