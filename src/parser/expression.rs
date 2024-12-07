@@ -1,14 +1,14 @@
 use crate::{
     ast::{BinaryOperator, Expr, Literal, UnaryOperator},
-    error::SyntaxError,
     token::TokenKind,
 };
+use miette::Result;
 
 use super::Parser;
 
 impl<'src> Parser<'src> {
     // TODO: Add docs
-    pub(crate) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>, SyntaxError> {
+    pub(crate) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>> {
         let mut lhs_expr = match self.cur_kind() {
             kind if kind.is_literal() => self.parse_literal_expression()?,
             kind if kind.is_prefix_operator() => self.parse_prefix_expression()?,
@@ -24,10 +24,11 @@ impl<'src> Parser<'src> {
                 .peek()
                 // FIXME: Panics if `1 +`
                 .expect("peek token should not be None")
-                .as_ref();
+                .clone();
 
             if let Err(err) = peek_result {
-                return Err(err.clone());
+                let report = miette::Report::new(err).wrap_err("Invalid operator");
+                return Err(report);
             }
 
             let peek_kind = peek_result.expect("handled Err above").kind;
@@ -46,7 +47,7 @@ impl<'src> Parser<'src> {
         Ok(lhs_expr)
     }
 
-    pub(crate) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
+    pub(crate) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
         self.advance()?; // Consume `(`
         let expr = self.parse_expr(0)?;
         // TODO: Replace with `self.expect(TokenKind::RightParen)?`
@@ -56,15 +57,12 @@ impl<'src> Parser<'src> {
         Ok(Expr::Grouping(Box::new(expr)))
     }
 
-    pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>, SyntaxError> {
+    pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
         let name = &self.source[self.cur_token().span];
         Ok(Expr::Identifier(name))
     }
 
-    pub(crate) fn parse_infix_expression(
-        &mut self,
-        lhs: Expr<'src>,
-    ) -> Result<Expr<'src>, SyntaxError> {
+    pub(crate) fn parse_infix_expression(&mut self, lhs: Expr<'src>) -> Result<Expr<'src>> {
         let op_kind = self.cur_kind();
         let (_, rhs_prec) =
             infix_precedence(op_kind).expect("current token should be an infix operator");
@@ -78,7 +76,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
+    pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
         match self.cur_kind() {
             TokenKind::Nil => Ok(Expr::Literal(Literal::Nil)),
             TokenKind::True => Ok(Expr::Literal(Literal::Boolean(true))),
@@ -98,7 +96,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub(crate) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>, SyntaxError> {
+    pub(crate) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
         let operator = match self.cur_kind() {
             TokenKind::Minus => UnaryOperator::UnaryMinus,
             TokenKind::Bang => UnaryOperator::LogicalNot,
@@ -140,8 +138,6 @@ pub(crate) fn infix_precedence(kind: TokenKind) -> Option<(u8, u8)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::error::ErrorFormat;
-
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -149,9 +145,9 @@ mod tests {
         let parser = Parser::new(input);
         match parser.parse_expression() {
             Ok(expr) => assert_eq!(expr.to_string(), expected),
-            Err(err) => {
-                err.print_error(input, &ErrorFormat::Pretty);
-                panic!("Encountered a SyntaxError");
+            Err(report) => {
+                eprintln!("{report:?}");
+                panic!("Encountered an error");
             }
         }
     }

@@ -88,8 +88,10 @@ fn main() -> miette::Result<()> {
             let parser = Parser::new(&source);
             match parser.parse_expression() {
                 Ok(expr) => println!("{expr}"),
-                Err(err) => {
-                    err.print_error(&source, &cli.error_format);
+                Err(report) => {
+                    // TODO: Implement a new `miette::ReportHandler` that can emit
+                    // Lox-styled simple error reports
+                    eprintln!("{:?}", report.with_source_code(source.to_string()));
                     std::process::exit(ExitCode::LexicalError as i32);
                 }
             }

@@ -31,7 +31,7 @@ impl<'src> Parser<'src> {
     }
 
     /// Parses an expression (e.g. `1 + 2 * 3`).
-    pub fn parse_expression(mut self) -> Result<Expr<'src>, SyntaxError> {
+    pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
         self.advance()?;
         self.parse_expr(0)
     }

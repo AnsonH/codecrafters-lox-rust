@@ -11,6 +11,7 @@ pub enum ErrorFormat {
     Simple,
 }
 
+/// Syntax errors when lexing/parsing the source code.
 #[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum SyntaxError {
     #[error("Unexpected character: {token}")]
