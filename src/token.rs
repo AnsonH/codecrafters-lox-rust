@@ -153,10 +153,19 @@ impl TokenKind {
         )
     }
 
-    pub fn is_binary_operator(&self) -> bool {
+    pub fn is_infix_operator(&self) -> bool {
         matches!(
             self,
-            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash
+            TokenKind::Plus
+                | TokenKind::Minus
+                | TokenKind::Star
+                | TokenKind::Slash
+                | TokenKind::Greater
+                | TokenKind::GreaterEqual
+                | TokenKind::Less
+                | TokenKind::LessEqual
+                | TokenKind::EqualEqual
+                | TokenKind::BangEqual
         )
     }
 

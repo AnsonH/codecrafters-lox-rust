@@ -110,14 +110,24 @@ impl<'src> Parser<'src> {
 // TODO: Move precedence to a new file (preferably same folder as AST)
 pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
     match op {
-        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 5),
+        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 9),
     }
 }
 
+/// Gets the left & right precedence values of an infix (binary) operator.
+///
+/// "LHS < RHS" means the operator is left associative, while the opposite means
+/// right associative.
+///
+/// Returning `None` means the token kind is not an infix operator.
 pub(crate) fn infix_precedence(kind: TokenKind) -> Option<(u8, u8)> {
     match kind {
-        TokenKind::Plus | TokenKind::Minus => Some((1, 2)),
-        TokenKind::Star | TokenKind::Slash => Some((3, 4)),
+        TokenKind::EqualEqual | TokenKind::BangEqual => Some((1, 2)),
+        TokenKind::Greater | TokenKind::GreaterEqual | TokenKind::Less | TokenKind::LessEqual => {
+            Some((3, 4))
+        }
+        TokenKind::Plus | TokenKind::Minus => Some((5, 6)),
+        TokenKind::Star | TokenKind::Slash => Some((7, 8)),
         _ => None,
     }
 }
@@ -129,7 +139,7 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn assert_parsed_expr(input: &str, expected: &str) {
+    fn assert(input: &str, expected: &str) {
         let parser = Parser::new(input);
         match parser.parse_expression() {
             Ok(expr) => assert_eq!(expr.to_string(), expected),
@@ -142,57 +152,74 @@ mod tests {
 
     #[test]
     fn test_empty() {
-        assert_parsed_expr("", "nil");
+        assert("", "nil");
     }
 
     #[test]
     fn test_literal() {
-        assert_parsed_expr("true", "true");
-        assert_parsed_expr("false", "false");
-        assert_parsed_expr("nil", "nil");
-        assert_parsed_expr("1", "1.0");
-        assert_parsed_expr("42.47", "42.47");
-        assert_parsed_expr(r#""hello""#, "hello");
+        assert("true", "true");
+        assert("false", "false");
+        assert("nil", "nil");
+        assert("1", "1.0");
+        assert("42.47", "42.47");
+        assert(r#""hello""#, "hello");
     }
 
     #[test]
     fn test_grouping() {
-        assert_parsed_expr(r#"("foo")"#, "(group foo)");
-        assert_parsed_expr(r#"(("foo"))"#, "(group (group foo))");
+        assert(r#"("foo")"#, "(group foo)");
+        assert(r#"(("foo"))"#, "(group (group foo))");
     }
 
     #[test]
     fn test_unary_expression() {
-        assert_parsed_expr("!true", "(! true)");
-        assert_parsed_expr("-5", "(- 5.0)");
-        assert_parsed_expr("!-5", "(! (- 5.0))");
-        assert_parsed_expr("(!!(false))", "(group (! (! (group false))))");
+        assert("!true", "(! true)");
+        assert("-5", "(- 5.0)");
+        assert("!-5", "(! (- 5.0))");
+        assert("(!!(false))", "(group (! (! (group false))))");
     }
 
     #[test]
-    fn test_arithmetic_operators() {
-        assert_parsed_expr("1 + 2", "(+ 1.0 2.0)");
-        assert_parsed_expr("1 - 2", "(- 1.0 2.0)");
-        assert_parsed_expr("1 * 2", "(* 1.0 2.0)");
-        assert_parsed_expr("1 / 2", "(/ 1.0 2.0)");
+    fn test_arithmetic() {
+        assert("1 + 2", "(+ 1.0 2.0)");
+        assert("1 - 2", "(- 1.0 2.0)");
+        assert("1 * 2", "(* 1.0 2.0)");
+        assert("1 / 2", "(/ 1.0 2.0)");
 
         // Operator precedence
-        assert_parsed_expr("1 + 2 + 3", "(+ (+ 1.0 2.0) 3.0)");
-        assert_parsed_expr("1 + 2 - 3", "(- (+ 1.0 2.0) 3.0)");
-        assert_parsed_expr("1 * 2 * 3", "(* (* 1.0 2.0) 3.0)");
-        assert_parsed_expr("1 * 2 / 3", "(/ (* 1.0 2.0) 3.0)");
-        assert_parsed_expr("1 + 2 * 3", "(+ 1.0 (* 2.0 3.0))");
-        assert_parsed_expr(
+        assert("1 + 2 + 3", "(+ (+ 1.0 2.0) 3.0)");
+        assert("1 + 2 - 3", "(- (+ 1.0 2.0) 3.0)");
+        assert("1 * 2 * 3", "(* (* 1.0 2.0) 3.0)");
+        assert("1 * 2 / 3", "(/ (* 1.0 2.0) 3.0)");
+        assert("1 + 2 * 3", "(+ 1.0 (* 2.0 3.0))");
+        assert(
             "1 + 2 * 3 - 4 / 5 + 6",
             "(+ (- (+ 1.0 (* 2.0 3.0)) (/ 4.0 5.0)) 6.0)",
         );
 
         // Unary operator has higher precedence than binary operator
-        assert_parsed_expr("-1 * 2", "(* (- 1.0) 2.0)");
-        assert_parsed_expr("1 + -2", "(+ 1.0 (- 2.0))");
+        assert("-1 * 2", "(* (- 1.0) 2.0)");
+        assert("1 + -2", "(+ 1.0 (- 2.0))");
 
         // Grouping
-        assert_parsed_expr("(1 + 2) * 3", "(* (group (+ 1.0 2.0)) 3.0)");
-        assert_parsed_expr("1 / (2 + 3) * 4", "(* (/ 1.0 (group (+ 2.0 3.0))) 4.0)");
+        assert("(1 + 2) * 3", "(* (group (+ 1.0 2.0)) 3.0)");
+        assert("1 / (2 + 3) * 4", "(* (/ 1.0 (group (+ 2.0 3.0))) 4.0)");
+    }
+
+    #[test]
+    fn test_comparison_and_equality() {
+        assert("1 < 2", "(< 1.0 2.0)");
+        assert("1 <= 2", "(<= 1.0 2.0)");
+        assert("1 > 2", "(> 1.0 2.0)");
+        assert("1 >= 2", "(>= 1.0 2.0)");
+        assert("1 == 2", "(== 1.0 2.0)");
+        assert("1 != 2", "(!= 1.0 2.0)");
+
+        assert("1 < 2 == 3 < 4", "(== (< 1.0 2.0) (< 3.0 4.0))");
+        assert("1 > 2 != 3 < 4", "(!= (> 1.0 2.0) (< 3.0 4.0))");
+        assert(
+            "1 < 2 + 3 != 4 * 5 < 6 + 7",
+            "(!= (< 1.0 (+ 2.0 3.0)) (< (* 4.0 5.0) (+ 6.0 7.0)))",
+        );
     }
 }

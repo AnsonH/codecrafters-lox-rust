@@ -52,6 +52,18 @@ pub enum BinaryOperator {
     Multiply,
     #[strum(to_string = "/")]
     Divide,
+    #[strum(to_string = ">")]
+    GreaterThan,
+    #[strum(to_string = ">=")]
+    GreaterEqualThan,
+    #[strum(to_string = "<")]
+    LessThan,
+    #[strum(to_string = "<=")]
+    LessEqualThan,
+    #[strum(to_string = "==")]
+    Equal,
+    #[strum(to_string = "!=")]
+    NotEqual,
 }
 
 impl<'src> Display for Expr<'src> {
@@ -90,6 +102,12 @@ impl From<TokenKind> for BinaryOperator {
             TokenKind::Minus => BinaryOperator::Subtract,
             TokenKind::Star => BinaryOperator::Multiply,
             TokenKind::Slash => BinaryOperator::Divide,
+            TokenKind::Greater => BinaryOperator::GreaterThan,
+            TokenKind::GreaterEqual => BinaryOperator::GreaterEqualThan,
+            TokenKind::Less => BinaryOperator::LessThan,
+            TokenKind::LessEqual => BinaryOperator::LessEqualThan,
+            TokenKind::EqualEqual => BinaryOperator::Equal,
+            TokenKind::BangEqual => BinaryOperator::NotEqual,
             _ => unreachable!("Expected binary operator, got {kind}"),
         }
     }
