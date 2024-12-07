@@ -17,13 +17,14 @@ pub enum Stmt {}
 /// Expression produces a value.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'src> {
-    Literal(Literal<'src>),
-    /// A grouped expression using parenthesis (e.g. `("foo")`)
-    Grouping(Box<Expr<'src>>),
-    /// Unary expression (e.g. `-5`, `!true`)
-    Unary(UnaryOperator, Box<Expr<'src>>),
     /// Binary expression (e.g. `1 + 2`)
     Binary(Box<Expr<'src>>, BinaryOperator, Box<Expr<'src>>),
+    /// A grouped expression using parenthesis (e.g. `("foo")`)
+    Grouping(Box<Expr<'src>>),
+    Identifier(&'src str),
+    Literal(Literal<'src>),
+    /// Unary expression (e.g. `-5`, `!true`)
+    Unary(UnaryOperator, Box<Expr<'src>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -69,10 +70,11 @@ pub enum BinaryOperator {
 impl<'src> Display for Expr<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Literal(literal) => write!(f, "{literal}"),
-            Expr::Grouping(expression) => write!(f, "(group {expression})"),
-            Expr::Unary(operator, right) => write!(f, "({operator} {right})"),
             Expr::Binary(left, operator, right) => write!(f, "({operator} {left} {right})"),
+            Expr::Identifier(name) => write!(f, "{name}"),
+            Expr::Grouping(expression) => write!(f, "(group {expression})"),
+            Expr::Literal(literal) => write!(f, "{literal}"),
+            Expr::Unary(operator, right) => write!(f, "({operator} {right})"),
         }
     }
 }

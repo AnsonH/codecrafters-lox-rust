@@ -13,6 +13,7 @@ impl<'src> Parser<'src> {
             kind if kind.is_literal() => self.parse_literal_expression()?,
             kind if kind.is_prefix_operator() => self.parse_prefix_expression()?,
             TokenKind::LeftParen => self.parse_grouping_expression()?,
+            TokenKind::Identifier => self.parse_identifier()?,
             TokenKind::Eof => return Ok(Expr::Literal(Literal::Nil)),
             _ => todo!(),
         };
@@ -53,6 +54,11 @@ impl<'src> Parser<'src> {
             todo!()
         }
         Ok(Expr::Grouping(Box::new(expr)))
+    }
+
+    pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>, SyntaxError> {
+        let name = &self.source[self.cur_token().span];
+        Ok(Expr::Identifier(name))
     }
 
     pub(crate) fn parse_infix_expression(
