@@ -153,7 +153,14 @@ impl TokenKind {
         )
     }
 
-    pub fn is_unary_operator(&self) -> bool {
+    pub fn is_binary_operator(&self) -> bool {
+        matches!(
+            self,
+            TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash
+        )
+    }
+
+    pub fn is_prefix_operator(&self) -> bool {
         matches!(self, TokenKind::Minus | TokenKind::Bang)
     }
 

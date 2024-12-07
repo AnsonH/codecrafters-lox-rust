@@ -2,6 +2,8 @@
 
 use std::fmt::Display;
 
+use crate::token::TokenKind;
+
 /// Root AST node that represents the whole program.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
@@ -16,10 +18,12 @@ pub enum Stmt {}
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'src> {
     Literal(Literal<'src>),
-    /// A grouped expression using parenthesis (e.g. `("foo")`).
+    /// A grouped expression using parenthesis (e.g. `("foo")`)
     Grouping(Box<Expr<'src>>),
     /// Unary expression (e.g. `-5`, `!true`)
     Unary(UnaryOperator, Box<Expr<'src>>),
+    /// Binary expression (e.g. `1 + 2`)
+    Binary(Box<Expr<'src>>, BinaryOperator, Box<Expr<'src>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -38,12 +42,25 @@ pub enum UnaryOperator {
     UnaryMinus,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, strum::Display)]
+pub enum BinaryOperator {
+    #[strum(to_string = "+")]
+    Add,
+    #[strum(to_string = "-")]
+    Subtract,
+    #[strum(to_string = "*")]
+    Multiply,
+    #[strum(to_string = "/")]
+    Divide,
+}
+
 impl<'src> Display for Expr<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expr::Literal(literal) => write!(f, "{literal}"),
             Expr::Grouping(expression) => write!(f, "(group {expression})"),
             Expr::Unary(operator, right) => write!(f, "({operator} {right})"),
+            Expr::Binary(left, operator, right) => write!(f, "({operator} {left} {right})"),
         }
     }
 }
@@ -62,6 +79,18 @@ impl<'src> Display for Literal<'src> {
                 }
             }
             Literal::String(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+impl From<TokenKind> for BinaryOperator {
+    fn from(kind: TokenKind) -> Self {
+        match kind {
+            TokenKind::Plus => BinaryOperator::Add,
+            TokenKind::Minus => BinaryOperator::Subtract,
+            TokenKind::Star => BinaryOperator::Multiply,
+            TokenKind::Slash => BinaryOperator::Divide,
+            _ => unreachable!("Expected binary operator, got {kind}"),
         }
     }
 }
