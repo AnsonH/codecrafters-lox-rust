@@ -1,9 +1,12 @@
 use crate::{
-    ast::{BinaryOperator, Expr, Literal, UnaryOperator},
+    ast::{
+        operator::{infix_precedence, prefix_precedence},
+        BinaryOperator, Expr, Literal, UnaryOperator,
+    },
     error::SyntaxError,
     token::TokenKind,
 };
-use miette::{Context, Report, Result};
+use miette::{Report, Result};
 
 use super::Parser;
 
@@ -108,32 +111,6 @@ impl<'src> Parser<'src> {
         let (_, rhs_prec) = prefix_precedence(operator);
         let right = self.parse_expr(rhs_prec)?;
         Ok(Expr::Unary(operator, Box::new(right)))
-    }
-}
-
-// TODO: Replace with enum
-// TODO: Move precedence to a new file (preferably same folder as AST)
-pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
-    match op {
-        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 9),
-    }
-}
-
-/// Gets the left & right precedence values of an infix (binary) operator.
-///
-/// "LHS < RHS" means the operator is left associative, while the opposite means
-/// right associative.
-///
-/// Returning `None` means the token kind is not an infix operator.
-pub(crate) fn infix_precedence(kind: TokenKind) -> Option<(u8, u8)> {
-    match kind {
-        TokenKind::EqualEqual | TokenKind::BangEqual => Some((1, 2)),
-        TokenKind::Greater | TokenKind::GreaterEqual | TokenKind::Less | TokenKind::LessEqual => {
-            Some((3, 4))
-        }
-        TokenKind::Plus | TokenKind::Minus => Some((5, 6)),
-        TokenKind::Star | TokenKind::Slash => Some((7, 8)),
-        _ => None,
     }
 }
 
