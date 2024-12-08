@@ -35,7 +35,9 @@ impl<'src> Parser<'src> {
     pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
         self.advance()?;
         if self.cur_kind() == TokenKind::Eof {
-            return Ok(Expr::Literal(Literal::Nil));
+            return Ok(Expr::Literal {
+                value: Literal::Nil,
+            });
         }
         self.parse_expr(0)
     }

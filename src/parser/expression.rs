@@ -58,12 +58,14 @@ impl<'src> Parser<'src> {
         self.advance()?; // Consume `(`
         let expr = self.parse_expr(0)?;
         self.expect(TokenKind::RightParen)?;
-        Ok(Expr::Grouping(Box::new(expr)))
+        Ok(Expr::Grouping {
+            expression: Box::new(expr),
+        })
     }
 
     pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
         let name = &self.source[self.cur_token().span];
-        Ok(Expr::Identifier(name))
+        Ok(Expr::Identifier { name })
     }
 
     pub(crate) fn parse_infix_expression(&mut self, lhs: Expr<'src>) -> Result<Expr<'src>> {
@@ -73,31 +75,32 @@ impl<'src> Parser<'src> {
 
         self.advance()?; // Consume operator
         let rhs = self.parse_expr(rhs_prec)?;
-        Ok(Expr::Binary(
-            Box::new(lhs),
-            BinaryOperator::from(op_kind),
-            Box::new(rhs),
-        ))
+        Ok(Expr::Binary {
+            left: Box::new(lhs),
+            operator: BinaryOperator::from(op_kind),
+            right: Box::new(rhs),
+        })
     }
 
     pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
-        match self.cur_kind() {
-            TokenKind::Nil => Ok(Expr::Literal(Literal::Nil)),
-            TokenKind::True => Ok(Expr::Literal(Literal::Boolean(true))),
-            TokenKind::False => Ok(Expr::Literal(Literal::Boolean(false))),
+        let value = match self.cur_kind() {
+            TokenKind::Nil => Literal::Nil,
+            TokenKind::True => Literal::Boolean(true),
+            TokenKind::False => Literal::Boolean(false),
             TokenKind::Number => {
                 let raw_number = self.cur_src();
                 let value: f64 = raw_number.parse().unwrap();
-                Ok(Expr::Literal(Literal::Number(value)))
+                Literal::Number(value)
             }
             TokenKind::String => {
                 // The token span includes the `"` quotes, so exclude them
                 let span_without_quotes = self.cur_token().span.shrink(1);
                 let value = &self.source[span_without_quotes];
-                Ok(Expr::Literal(Literal::String(value)))
+                Literal::String(value)
             }
             _ => unreachable!("unexpected literal kind: {}", self.cur_kind()),
-        }
+        };
+        Ok(Expr::Literal { value })
     }
 
     pub(crate) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
@@ -110,7 +113,10 @@ impl<'src> Parser<'src> {
 
         let (_, rhs_prec) = prefix_precedence(operator);
         let right = self.parse_expr(rhs_prec)?;
-        Ok(Expr::Unary(operator, Box::new(right)))
+        Ok(Expr::Unary {
+            operator,
+            right: Box::new(right),
+        })
     }
 }
 
