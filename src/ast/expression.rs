@@ -3,29 +3,44 @@ use std::fmt::Display;
 use super::operator::{BinaryOperator, UnaryOperator};
 
 /// Expression produces a value.
+///
+/// # Optimization
+///
+/// This enum's size is optimized by `Box`-ing all enum variants.
+/// See the [oxc AST guide](https://oxc.rs/docs/learn/parser_in_rust/ast.html#enum-size).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'src> {
-    /// Binary expression (e.g. `1 + 2`)
-    Binary {
-        left: Box<Expr<'src>>,
-        operator: BinaryOperator,
-        right: Box<Expr<'src>>,
-    },
-    /// A grouped expression using parenthesis (e.g. `("foo")`)
-    Grouping {
-        expression: Box<Expr<'src>>,
-    },
-    Identifier {
-        name: &'src str,
-    },
-    Literal {
-        value: Literal<'src>,
-    },
-    /// Unary expression (e.g. `-5`, `!true`)
-    Unary {
-        operator: UnaryOperator,
-        right: Box<Expr<'src>>,
-    },
+    Binary(Box<Binary<'src>>),
+    Grouping(Box<Grouping<'src>>),
+    Identifier(Box<Identifier<'src>>),
+    Literal(Box<LiteralExpr<'src>>),
+    Unary(Box<Unary<'src>>),
+}
+
+/// Binary expression (e.g. `1 + 2`)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Binary<'src> {
+    pub left: Expr<'src>,
+    pub operator: BinaryOperator,
+    pub right: Expr<'src>,
+}
+
+/// Grouped expression using parenthesis (e.g. `("foo")`)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Grouping<'src> {
+    pub expression: Expr<'src>,
+}
+
+/// Identifier (e.g. variable, function name)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Identifier<'src> {
+    pub name: &'src str,
+}
+
+/// Literal expression
+#[derive(Debug, Clone, PartialEq)]
+pub struct LiteralExpr<'src> {
+    pub value: Literal<'src>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,18 +51,23 @@ pub enum Literal<'src> {
     String(&'src str),
 }
 
+/// Unary expression (e.g. `-5`)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Unary<'src> {
+    pub operator: UnaryOperator,
+    pub right: Expr<'src>,
+}
+
 impl<'src> Display for Expr<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Binary {
-                left,
-                operator,
-                right,
-            } => write!(f, "({operator} {left} {right})"),
-            Expr::Identifier { name } => write!(f, "{name}"),
-            Expr::Grouping { expression } => write!(f, "(group {expression})"),
-            Expr::Literal { value } => write!(f, "{value}"),
-            Expr::Unary { operator, right } => write!(f, "({operator} {right})"),
+            Expr::Binary(b) => {
+                write!(f, "({} {} {})", b.operator, b.left, b.right)
+            }
+            Expr::Identifier(i) => write!(f, "{}", i.name),
+            Expr::Grouping(g) => write!(f, "(group {})", g.expression),
+            Expr::Literal(l) => write!(f, "{}", l.value),
+            Expr::Unary(u) => write!(f, "({} {})", u.operator, u.right),
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::{
     ast::{
+        expression::{Binary, Grouping, Identifier, LiteralExpr, Unary},
         operator::{infix_precedence, prefix_precedence},
         BinaryOperator, Expr, Literal, UnaryOperator,
     },
@@ -58,14 +59,12 @@ impl<'src> Parser<'src> {
         self.advance()?; // Consume `(`
         let expr = self.parse_expr(0)?;
         self.expect(TokenKind::RightParen)?;
-        Ok(Expr::Grouping {
-            expression: Box::new(expr),
-        })
+        Ok(Expr::Grouping(Grouping { expression: expr }.into()))
     }
 
     pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
         let name = &self.source[self.cur_token().span];
-        Ok(Expr::Identifier { name })
+        Ok(Expr::Identifier(Identifier { name }.into()))
     }
 
     pub(crate) fn parse_infix_expression(&mut self, lhs: Expr<'src>) -> Result<Expr<'src>> {
@@ -75,11 +74,14 @@ impl<'src> Parser<'src> {
 
         self.advance()?; // Consume operator
         let rhs = self.parse_expr(rhs_prec)?;
-        Ok(Expr::Binary {
-            left: Box::new(lhs),
-            operator: BinaryOperator::from(op_kind),
-            right: Box::new(rhs),
-        })
+        Ok(Expr::Binary(
+            Binary {
+                left: lhs,
+                operator: BinaryOperator::from(op_kind),
+                right: rhs,
+            }
+            .into(),
+        ))
     }
 
     pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
@@ -100,7 +102,7 @@ impl<'src> Parser<'src> {
             }
             _ => unreachable!("unexpected literal kind: {}", self.cur_kind()),
         };
-        Ok(Expr::Literal { value })
+        Ok(Expr::Literal(LiteralExpr { value }.into()))
     }
 
     pub(crate) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
@@ -113,10 +115,7 @@ impl<'src> Parser<'src> {
 
         let (_, rhs_prec) = prefix_precedence(operator);
         let right = self.parse_expr(rhs_prec)?;
-        Ok(Expr::Unary {
-            operator,
-            right: Box::new(right),
-        })
+        Ok(Expr::Unary(Unary { operator, right }.into()))
     }
 }
 

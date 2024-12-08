@@ -5,7 +5,7 @@ mod expression;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{Expr, Literal},
+    ast::{expression::LiteralExpr, Expr, Literal},
     error::SyntaxError,
     lexer::Lexer,
     span::Span,
@@ -35,9 +35,12 @@ impl<'src> Parser<'src> {
     pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
         self.advance()?;
         if self.cur_kind() == TokenKind::Eof {
-            return Ok(Expr::Literal {
-                value: Literal::Nil,
-            });
+            return Ok(Expr::Literal(
+                LiteralExpr {
+                    value: Literal::Nil,
+                }
+                .into(),
+            ));
         }
         self.parse_expr(0)
     }
