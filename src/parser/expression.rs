@@ -2,7 +2,7 @@ use crate::{
     ast::{BinaryOperator, Expr, Literal, UnaryOperator},
     token::TokenKind,
 };
-use miette::Result;
+use miette::{Report, Result};
 
 use super::Parser;
 
@@ -27,7 +27,7 @@ impl<'src> Parser<'src> {
                 .clone();
 
             if let Err(err) = peek_result {
-                let report = miette::Report::new(err).wrap_err("Invalid operator");
+                let report = Report::new(err).wrap_err("Invalid operator");
                 return Err(report);
             }
 

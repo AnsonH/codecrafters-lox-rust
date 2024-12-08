@@ -235,7 +235,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::{error::ErrorFormat, token::TokenKind};
+    use crate::token::TokenKind;
     use pretty_assertions::assert_eq;
 
     fn assert_tokens(input: &str, expected: &Vec<&str>) {
@@ -244,8 +244,7 @@ mod tests {
             match lexer.next().unwrap() {
                 Ok(token) => assert_eq!(token.to_string(input), *expected_token_str),
                 Err(err) => {
-                    err.print_error(input, &ErrorFormat::Pretty);
-                    panic!("Encountered a SyntaxError");
+                    panic!("Encountered a SyntaxError: {err:?}");
                 }
             }
         }

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use clap::{Parser as ClapParser, Subcommand};
-use miette::{IntoDiagnostic, WrapErr};
+use miette::{IntoDiagnostic, NamedSource, WrapErr};
 use rust_lox::{
     error::{ErrorFormat, SyntaxError},
     lexer::Lexer,
@@ -91,7 +91,9 @@ fn main() -> miette::Result<()> {
                 Err(report) => {
                     // TODO: Implement a new `miette::ReportHandler` that can emit
                     // Lox-styled simple error reports
-                    eprintln!("{:?}", report.with_source_code(source.to_string()));
+                    let named_source = NamedSource::new(filename.display().to_string(), source);
+                    let report = report.with_source_code(named_source);
+                    eprintln!("{report:?}");
                     std::process::exit(ExitCode::LexicalError as i32);
                 }
             }
