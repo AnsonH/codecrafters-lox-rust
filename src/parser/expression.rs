@@ -1,8 +1,9 @@
 use crate::{
     ast::{BinaryOperator, Expr, Literal, UnaryOperator},
+    error::SyntaxError,
     token::TokenKind,
 };
-use miette::{Report, Result};
+use miette::{Context, Report, Result};
 
 use super::Parser;
 
@@ -14,15 +15,18 @@ impl<'src> Parser<'src> {
             kind if kind.is_prefix_operator() => self.parse_prefix_expression()?,
             TokenKind::LeftParen => self.parse_grouping_expression()?,
             TokenKind::Identifier => self.parse_identifier()?,
-            TokenKind::Eof => return Ok(Expr::Literal(Literal::Nil)),
-            _ => todo!(),
+            _ => {
+                return Err(SyntaxError::MissingExpression {
+                    span: self.cur_token().span.into(),
+                }
+                .into())
+            }
         };
 
         loop {
             let peek_result = self
                 .lexer
                 .peek()
-                // FIXME: Panics if `1 +`
                 .expect("peek token should not be None")
                 .clone();
 
@@ -50,10 +54,7 @@ impl<'src> Parser<'src> {
     pub(crate) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
         self.advance()?; // Consume `(`
         let expr = self.parse_expr(0)?;
-        // TODO: Replace with `self.expect(TokenKind::RightParen)?`
-        if self.expect(TokenKind::RightParen).is_err() {
-            todo!()
-        }
+        self.expect(TokenKind::RightParen)?;
         Ok(Expr::Grouping(Box::new(expr)))
     }
 
@@ -152,6 +153,18 @@ mod tests {
         }
     }
 
+    fn assert_error(input: &str, expected: SyntaxError) {
+        let parser = Parser::new(input);
+        let report = parser
+            .parse_expression()
+            .expect_err("Parser should emit error");
+
+        match report.downcast_ref::<SyntaxError>() {
+            Some(err) => assert_eq!(*err, expected),
+            None => panic!("Parser should emit a SyntaxError"),
+        }
+    }
+
     #[test]
     fn test_empty() {
         assert("", "nil");
@@ -171,6 +184,15 @@ mod tests {
     fn test_grouping() {
         assert(r#"("foo")"#, "(group foo)");
         assert(r#"(("foo"))"#, "(group (group foo))");
+
+        assert_error(
+            "(true",
+            SyntaxError::UnexpectedToken {
+                expected: ")".into(),
+                actual: "EOF".into(),
+                span: (5, 0).into(),
+            },
+        );
     }
 
     #[test]
@@ -179,6 +201,13 @@ mod tests {
         assert("-5", "(- 5.0)");
         assert("!-5", "(! (- 5.0))");
         assert("(!!(false))", "(group (! (! (group false))))");
+
+        assert_error(
+            "!",
+            SyntaxError::MissingExpression {
+                span: (1, 0).into(),
+            },
+        );
     }
 
     #[test]
@@ -206,6 +235,14 @@ mod tests {
         // Grouping
         assert("(1 + 2) * 3", "(* (group (+ 1.0 2.0)) 3.0)");
         assert("1 / (2 + 3) * 4", "(* (/ 1.0 (group (+ 2.0 3.0))) 4.0)");
+
+        // Errors
+        assert_error(
+            "1 +",
+            SyntaxError::MissingExpression {
+                span: (3, 0).into(),
+            },
+        );
     }
 
     #[test]

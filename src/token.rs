@@ -201,4 +201,48 @@ impl TokenKind {
             _ => TokenKind::Identifier,
         }
     }
+
+    pub fn to_str(self) -> &'static str {
+        match self {
+            TokenKind::Eof => "EOF",
+            TokenKind::LeftParen => "(",
+            TokenKind::RightParen => ")",
+            TokenKind::LeftBrace => "{",
+            TokenKind::RightBrace => "}",
+            TokenKind::Comma => ",",
+            TokenKind::Semicolon => ";",
+            TokenKind::Dot => ".",
+            TokenKind::Plus => "+",
+            TokenKind::Minus => "-",
+            TokenKind::Star => "*",
+            TokenKind::Slash => "/",
+            TokenKind::Equal => "=",
+            TokenKind::EqualEqual => "==",
+            TokenKind::Bang => "!",
+            TokenKind::BangEqual => "!=",
+            TokenKind::Less => "<",
+            TokenKind::LessEqual => "<=",
+            TokenKind::Greater => ">",
+            TokenKind::GreaterEqual => ">=",
+            TokenKind::String => "string",
+            TokenKind::Number => "number",
+            TokenKind::Identifier => "identifier",
+            TokenKind::And => "and",
+            TokenKind::Class => "class",
+            TokenKind::Else => "else",
+            TokenKind::False => "false",
+            TokenKind::For => "for",
+            TokenKind::Fun => "fun",
+            TokenKind::If => "if",
+            TokenKind::Nil => "nil",
+            TokenKind::Or => "or",
+            TokenKind::Print => "print",
+            TokenKind::Return => "return",
+            TokenKind::Super => "super",
+            TokenKind::This => "this",
+            TokenKind::True => "true",
+            TokenKind::Var => "var",
+            TokenKind::While => "while",
+        }
+    }
 }

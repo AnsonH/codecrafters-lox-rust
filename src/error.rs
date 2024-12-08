@@ -14,6 +14,12 @@ pub enum ErrorFormat {
 /// Syntax errors when lexing/parsing the source code.
 #[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum SyntaxError {
+    #[error("Expected an expression")]
+    MissingExpression {
+        #[label("here")]
+        span: SourceSpan,
+    },
+
     #[error("Unexpected character: {token}")]
     SingleTokenError {
         token: char,
@@ -21,9 +27,10 @@ pub enum SyntaxError {
         span: SourceSpan,
     },
 
-    #[error("Unexpected token, expecting '{expected}'")]
+    #[error("Expected `{expected}` but found `{actual}`")]
     UnexpectedToken {
-        expected: char,
+        expected: String,
+        actual: String,
         #[label("This token")]
         span: SourceSpan,
     },
@@ -54,6 +61,7 @@ impl SyntaxError {
     /// Starting line number of the error
     fn line_start(&self, source_code: &str) -> usize {
         let offset = match self {
+            Self::MissingExpression { span, .. } => span.offset(),
             Self::SingleTokenError { span, .. } => span.offset(),
             Self::UnexpectedToken { span, .. } => span.offset(),
             Self::UnterminatedStringError { span, .. } => span.offset(),

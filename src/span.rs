@@ -39,6 +39,19 @@ impl Span {
         Span { start, end }
     }
 
+    /// Creates a new [Span] starting at `start` with length of `size` bytes.
+    ///
+    /// # Example
+    /// ```
+    /// use rust_lox::span::Span;
+    /// let span = Span::sized(4, 2);
+    /// assert_eq!(span, Span::new(4, 6));
+    /// ```
+    #[inline]
+    pub const fn sized(start: u32, size: u32) -> Self {
+        Self::new(start, start + size)
+    }
+
     #[inline]
     pub const fn len(&self) -> u32 {
         self.end - self.start
@@ -49,11 +62,10 @@ impl Span {
         self.start == self.end
     }
 
-    /// Creates a [Span] that has its start and end positions shrunk by `offset`
-    /// amount.
+    /// Creates a new [Span] that has its start and end positions shrunk by
+    /// `offset` amount.
     ///
     /// # Example
-    ///
     /// ```
     /// use rust_lox::span::Span;
     /// let span = Span::new(4, 10);

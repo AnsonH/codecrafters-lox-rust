@@ -5,9 +5,10 @@ mod expression;
 use std::iter::Peekable;
 
 use crate::{
-    ast::Expr,
+    ast::{Expr, Literal},
     error::SyntaxError,
     lexer::Lexer,
+    span::Span,
     token::{Token, TokenKind},
 };
 
@@ -33,6 +34,9 @@ impl<'src> Parser<'src> {
     /// Parses an expression (e.g. `1 + 2 * 3`).
     pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
         self.advance()?;
+        if self.cur_kind() == TokenKind::Eof {
+            return Ok(Expr::Literal(Literal::Nil));
+        }
         self.parse_expr(0)
     }
 
@@ -64,15 +68,32 @@ impl<'src> Parser<'src> {
     }
 
     /// Consumes the next token if it equals to `expected`.
-    pub(crate) fn expect(&mut self, expected: TokenKind) -> Result<Token, ()> {
+    pub(crate) fn expect(&mut self, expected: TokenKind) -> miette::Result<()> {
         match self.lexer.peek() {
-            Some(Ok(token)) if token.kind == expected => {
-                let token = self.lexer.next().unwrap().unwrap();
-                Ok(token)
+            Some(Ok(token)) => {
+                if token.kind == expected {
+                    self.advance()?;
+                    Ok(())
+                } else {
+                    Err(SyntaxError::UnexpectedToken {
+                        expected: expected.to_str().into(),
+                        actual: token.kind.to_str().into(),
+                        span: token.span.into(),
+                    }
+                    .into())
+                }
             }
-            // TODO: Add "expected token" error
-            // TODO: Propagate `lexer.peek()`'s SyntaxError
-            _ => Err(()),
+            Some(Err(err)) => Err(err.clone().into()),
+            None => {
+                // i.e. reached EOF
+                let span = Span::sized(self.cur_token().span.start, 0);
+                Err(SyntaxError::UnexpectedToken {
+                    expected: expected.to_str().into(),
+                    actual: TokenKind::Eof.to_str().into(),
+                    span: span.into(),
+                }
+                .into())
+            }
         }
     }
 }
