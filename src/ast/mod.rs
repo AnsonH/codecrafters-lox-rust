@@ -2,6 +2,7 @@
 
 pub mod expression;
 pub mod operator;
+pub mod printer;
 pub mod statement;
 
 pub use expression::{Expr, Literal};

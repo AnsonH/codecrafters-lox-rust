@@ -121,13 +121,17 @@ impl<'src> Parser<'src> {
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::printer::AstPrefixPrinter;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
     fn assert(input: &str, expected: &str) {
         let parser = Parser::new(input);
+        let mut printer = AstPrefixPrinter;
+
         match parser.parse_expression() {
-            Ok(expr) => assert_eq!(expr.to_string(), expected),
+            Ok(expr) => assert_eq!(printer.print(&expr), expected),
             Err(report) => {
                 eprintln!("{report:?}");
                 panic!("Encountered an error");

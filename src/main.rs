@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
 use miette::{IntoDiagnostic, NamedSource, WrapErr};
 use rust_lox::{
+    ast::printer::AstPrefixPrinter,
     error::{ErrorFormat, SyntaxError},
     lexer::Lexer,
     parser::Parser,
@@ -86,8 +87,10 @@ fn main() -> miette::Result<()> {
             let source = read_file(filename)?;
 
             let parser = Parser::new(&source);
+            let mut printer = AstPrefixPrinter;
+
             match parser.parse_expression() {
-                Ok(expr) => println!("{expr}"),
+                Ok(expr) => println!("{}", printer.print(&expr)),
                 Err(report) => {
                     // TODO: Implement a new `miette::ReportHandler` that can emit
                     // Lox-styled simple error reports
