@@ -2,17 +2,22 @@ use std::fs;
 use std::path::PathBuf;
 
 use clap::{Parser as ClapParser, Subcommand};
-use miette::{IntoDiagnostic, NamedSource, WrapErr};
+use miette::{IntoDiagnostic, NamedSource, Result, WrapErr};
 use rust_lox::{
     ast::printer::AstPrefixPrinter,
     error::{ErrorFormat, SyntaxError},
+    evaluator::Evaluator,
     lexer::Lexer,
     parser::Parser,
     token::Token,
 };
 
+#[derive(Clone, Copy)]
 enum ExitCode {
+    /// Due to syntax error during lexing or parsing.
     LexicalError = 65,
+    /// Due to runtime error during evaluation.
+    RuntimeError = 70,
 }
 
 #[derive(ClapParser)]
@@ -43,26 +48,33 @@ enum Commands {
         /// Path to a `.lox` file.
         filename: PathBuf,
     },
+    /// Evaluates an expression.
+    Evaluate {
+        /// Path to a `.lox` file.
+        filename: PathBuf,
+    },
 }
 
-fn read_file(filename: &PathBuf) -> miette::Result<String> {
+fn read_file(filename: &PathBuf) -> Result<NamedSource<String>> {
     fs::read_to_string(filename)
+        .map(|content| NamedSource::new(filename.display().to_string(), content))
         .into_diagnostic() // Converts Error into a miette::Report for pretty errors
         .wrap_err(format!("Fail to read '{}'", filename.display()))
 }
 
-fn main() -> miette::Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
         Commands::Tokenize { filename } => {
             let source = read_file(filename)?;
+            let source = source.inner();
 
             let mut has_errors = false;
             let mut tokens: Vec<Token> = vec![];
             let mut errors: Vec<SyntaxError> = vec![];
 
-            let lexer = Lexer::new(&source);
+            let lexer = Lexer::new(source);
             for token in lexer {
                 match token {
                     Ok(t) => tokens.push(t),
@@ -74,10 +86,10 @@ fn main() -> miette::Result<()> {
             }
 
             for error in errors {
-                error.print_error(&source, &cli.error_format);
+                error.print_error(source, &cli.error_format);
             }
             for token in tokens {
-                println!("{}", token.to_string(&source));
+                println!("{}", token.to_string(source));
             }
             if has_errors {
                 std::process::exit(ExitCode::LexicalError as i32);
@@ -86,7 +98,7 @@ fn main() -> miette::Result<()> {
         Commands::Parse { filename } => {
             let source = read_file(filename)?;
 
-            let parser = Parser::new(&source);
+            let parser = Parser::new(source.inner());
             let mut printer = AstPrefixPrinter;
 
             match parser.parse_expression() {
@@ -94,10 +106,29 @@ fn main() -> miette::Result<()> {
                 Err(report) => {
                     // TODO: Implement a new `miette::ReportHandler` that can emit
                     // Lox-styled simple error reports
-                    let named_source = NamedSource::new(filename.display().to_string(), source);
-                    let report = report.with_source_code(named_source);
-                    eprintln!("{report:?}");
+                    eprintln!("{:?}", report.with_source_code(source));
                     std::process::exit(ExitCode::LexicalError as i32);
+                }
+            }
+        }
+        Commands::Evaluate { filename } => {
+            let source = read_file(filename)?;
+
+            let parser = Parser::new(source.inner());
+            let expr = match parser.parse_expression() {
+                Ok(expr) => expr,
+                Err(report) => {
+                    eprintln!("{:?}", report.with_source_code(source));
+                    std::process::exit(ExitCode::LexicalError as i32);
+                }
+            };
+
+            let mut evaluator = Evaluator;
+            match evaluator.evaluate_expression(&expr) {
+                Ok(obj) => println!("{obj}"),
+                Err(report) => {
+                    eprintln!("{:?}", report.with_source_code(source));
+                    std::process::exit(ExitCode::RuntimeError as i32);
                 }
             }
         }

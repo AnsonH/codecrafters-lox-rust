@@ -44,6 +44,7 @@ pub enum SyntaxError {
 
 impl SyntaxError {
     /// Consumes and prints the error to stderr
+    // TODO: Deprecate this with a custom `miette::ReportHandler` implementation
     pub fn print_error(self, source_code: &str, format: &ErrorFormat) {
         match format {
             ErrorFormat::Pretty => {
