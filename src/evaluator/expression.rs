@@ -2,7 +2,7 @@ use miette::Result;
 
 use crate::ast::{
     expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
-    UnaryOperator,
+    BinaryOperator, UnaryOperator,
 };
 
 use super::{object::Object, Evaluator};
@@ -11,7 +11,29 @@ impl ExprVisitor for Evaluator {
     type Value = Result<Object>;
 
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
-        todo!()
+        let left = expr.left.accept(self)?;
+        let right = expr.right.accept(self)?;
+
+        if let (Object::String(lhs), Object::String(rhs)) = (&left, &right) {
+            return Ok(Object::String(format!("{lhs}{rhs}")));
+        }
+
+        // TODO: Check for LHS & RHS types
+        let left = left.unwrap_number();
+        let right = right.unwrap_number();
+
+        match expr.operator {
+            BinaryOperator::Add => Ok(Object::Number(left + right)),
+            BinaryOperator::Subtract => Ok(Object::Number(left - right)),
+            BinaryOperator::Multiply => Ok(Object::Number(left * right)),
+            BinaryOperator::Divide => Ok(Object::Number(left / right)),
+            BinaryOperator::GreaterThan => Ok(Object::Boolean(left > right)),
+            BinaryOperator::GreaterEqualThan => Ok(Object::Boolean(left >= right)),
+            BinaryOperator::LessThan => Ok(Object::Boolean(left < right)),
+            BinaryOperator::LessEqualThan => Ok(Object::Boolean(left <= right)),
+            BinaryOperator::Equal => Ok(Object::Boolean(left == right)),
+            BinaryOperator::NotEqual => Ok(Object::Boolean(left != right)),
+        }
     }
 
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value {
@@ -101,5 +123,28 @@ mod tests {
         assert("!10.40", &Boolean(false));
         assert(r#"!"""#, &Boolean(false));
         assert(r#"!"hello""#, &Boolean(false));
+    }
+
+    #[test]
+    fn test_arithmetic() {
+        assert("1 + 2", &Number(3.0));
+        assert("1 - 2", &Number(-1.0));
+        assert("1 * 2", &Number(2.0));
+        assert("1 / 2", &Number(0.5));
+        assert("(1 + 2) / -3.0 + 4 * -(5 + 6.5)", &Number(-47.0));
+    }
+
+    #[test]
+    fn test_string_concatenation() {
+        assert(r#""hello" + " world!""#, &String("hello world!".into()));
+    }
+
+    #[test]
+    fn test_comparison() {
+        assert("1 < 2", &Boolean(true));
+        assert("1 <= 2", &Boolean(true));
+        assert("1 > 2", &Boolean(false));
+        assert("1 >= 2", &Boolean(false));
+        assert("(-20 + 70) >= (25 * 2)", &Boolean(true));
     }
 }

@@ -18,6 +18,13 @@ impl Object {
     pub(crate) fn is_truthy(&self) -> bool {
         !matches!(self, Object::Boolean(false) | Object::Nil)
     }
+
+    pub(crate) fn unwrap_number(self) -> f64 {
+        match self {
+            Object::Number(value) => value,
+            obj => panic!("called `Object::unwrap_number()` on an non-number Object: '{obj:?}'"),
+        }
+    }
 }
 
 impl Display for Object {
