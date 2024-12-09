@@ -11,28 +11,41 @@ impl ExprVisitor for Evaluator {
     type Value = Result<Object>;
 
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
+        use BinaryOperator::*;
+
         let left = expr.left.accept(self)?;
         let right = expr.right.accept(self)?;
 
-        if let (Object::String(lhs), Object::String(rhs)) = (&left, &right) {
-            return Ok(Object::String(format!("{lhs}{rhs}")));
+        match expr.operator {
+            Equal => return Ok(Object::Boolean(left == right)),
+            NotEqual => return Ok(Object::Boolean(left != right)),
+            _ => (),
         }
 
-        // TODO: Check for LHS & RHS types
+        if expr.operator == Add {
+            match (&left, &right) {
+                (Object::String(lhs), Object::String(rhs)) => {
+                    return Ok(Object::String(format!("{lhs}{rhs}")));
+                }
+                (Object::Number(lhs), Object::Number(rhs)) => return Ok(Object::Number(lhs + rhs)),
+                _ => todo!("Throw RuntimeError"),
+            }
+        }
+
+        // TODO: Check if left and right are both numbers
         let left = left.unwrap_number();
         let right = right.unwrap_number();
-
         match expr.operator {
-            BinaryOperator::Add => Ok(Object::Number(left + right)),
-            BinaryOperator::Subtract => Ok(Object::Number(left - right)),
-            BinaryOperator::Multiply => Ok(Object::Number(left * right)),
-            BinaryOperator::Divide => Ok(Object::Number(left / right)),
-            BinaryOperator::GreaterThan => Ok(Object::Boolean(left > right)),
-            BinaryOperator::GreaterEqualThan => Ok(Object::Boolean(left >= right)),
-            BinaryOperator::LessThan => Ok(Object::Boolean(left < right)),
-            BinaryOperator::LessEqualThan => Ok(Object::Boolean(left <= right)),
-            BinaryOperator::Equal => Ok(Object::Boolean(left == right)),
-            BinaryOperator::NotEqual => Ok(Object::Boolean(left != right)),
+            Subtract => Ok(Object::Number(left - right)),
+            Multiply => Ok(Object::Number(left * right)),
+            Divide => Ok(Object::Number(left / right)),
+            GreaterThan => Ok(Object::Boolean(left > right)),
+            GreaterEqualThan => Ok(Object::Boolean(left >= right)),
+            LessThan => Ok(Object::Boolean(left < right)),
+            LessEqualThan => Ok(Object::Boolean(left <= right)),
+            Add | Equal | NotEqual => {
+                unreachable!("handled above")
+            }
         }
     }
 
@@ -49,10 +62,12 @@ impl ExprVisitor for Evaluator {
     }
 
     fn visit_unary_expr(&mut self, expr: &Unary) -> Self::Value {
+        use UnaryOperator::*;
+
         let right = expr.right.accept(self)?;
         match expr.operator {
-            UnaryOperator::LogicalNot => Ok(Object::Boolean(!right.is_truthy())),
-            UnaryOperator::UnaryMinus => {
+            LogicalNot => Ok(Object::Boolean(!right.is_truthy())),
+            UnaryMinus => {
                 if let Object::Number(value) = right {
                     Ok(Object::Number(-value))
                 } else {
@@ -140,11 +155,17 @@ mod tests {
     }
 
     #[test]
-    fn test_comparison() {
+    fn test_comparison_and_equality() {
         assert("1 < 2", &Boolean(true));
         assert("1 <= 2", &Boolean(true));
         assert("1 > 2", &Boolean(false));
         assert("1 >= 2", &Boolean(false));
         assert("(-20 + 70) >= (25 * 2)", &Boolean(true));
+
+        assert("1 == 1", &Boolean(true));
+        assert(r#"1 == "1""#, &Boolean(false));
+        assert(r#""foo" != "bar""#, &Boolean(true));
+        assert("(2 + 4) != (3 * 2)", &Boolean(false));
+        assert("5 > 4 == (2 < 3 * 6)", &Boolean(true));
     }
 }
