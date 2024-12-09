@@ -14,6 +14,12 @@ pub enum Object {
     String(String),
 }
 
+impl Object {
+    pub(crate) fn is_truthy(&self) -> bool {
+        !matches!(self, Object::Boolean(false) | Object::Nil)
+    }
+}
+
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

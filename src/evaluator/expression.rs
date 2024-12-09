@@ -1,6 +1,9 @@
 use miette::Result;
 
-use crate::ast::expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary};
+use crate::ast::{
+    expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
+    UnaryOperator,
+};
 
 use super::{object::Object, Evaluator};
 
@@ -12,7 +15,7 @@ impl ExprVisitor for Evaluator {
     }
 
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value {
-        todo!()
+        expr.expression.accept(self)
     }
 
     fn visit_identifier_expr(&mut self, expr: &Identifier) -> Self::Value {
@@ -24,7 +27,17 @@ impl ExprVisitor for Evaluator {
     }
 
     fn visit_unary_expr(&mut self, expr: &Unary) -> Self::Value {
-        todo!()
+        let right = expr.right.accept(self)?;
+        match expr.operator {
+            UnaryOperator::LogicalNot => Ok(Object::Boolean(!right.is_truthy())),
+            UnaryOperator::UnaryMinus => {
+                if let Object::Number(value) = right {
+                    Ok(Object::Number(-value))
+                } else {
+                    todo!("handle operand not number")
+                }
+            }
+        }
     }
 }
 
@@ -32,6 +45,7 @@ impl ExprVisitor for Evaluator {
 mod tests {
     use crate::parser::Parser;
 
+    use super::Object::*;
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -55,8 +69,37 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        assert("true", &Object::Boolean(true));
-        assert("false", &Object::Boolean(false));
-        assert("nil", &Object::Nil);
+        assert("true", &Boolean(true));
+        assert("false", &Boolean(false));
+        assert("nil", &Nil);
+        assert("10", &Number(10.0));
+        assert("10.40", &Number(10.4));
+        assert(r#""hello world!""#, &String("hello world!".into()));
+    }
+
+    #[test]
+    fn test_grouping() {
+        assert(r#"("hello world!")"#, &String("hello world!".into()));
+        assert("(true)", &Boolean(true));
+        assert("(10.40)", &Number(10.4));
+        assert("((false))", &Boolean(false));
+    }
+
+    #[test]
+    fn test_unary_expression() {
+        assert("-73", &Number(-73.0));
+        assert("--73", &Number(73.0));
+
+        assert("!true", &Boolean(false));
+        assert("!((false))", &Boolean(true));
+        assert("!!false", &Boolean(false));
+
+        // Truthy and falsey values
+        assert("!nil", &Boolean(true));
+        assert("!false", &Boolean(true));
+        assert("!0", &Boolean(false));
+        assert("!10.40", &Boolean(false));
+        assert(r#"!"""#, &Boolean(false));
+        assert(r#"!"hello""#, &Boolean(false));
     }
 }
