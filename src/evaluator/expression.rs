@@ -31,11 +31,13 @@ impl ExprVisitor for Evaluator {
                     return Ok(Object::String(format!("{lhs}{rhs}")));
                 }
                 (Object::Number(lhs), Object::Number(rhs)) => return Ok(Object::Number(lhs + rhs)),
-                _ => todo!("Throw RuntimeError"),
+                _ => return Err(RuntimeError::PlusOperandError.into()),
             }
         }
 
-        // TODO: Check if left and right are both numbers
+        if !matches!((&left, &right), (Object::Number(_), Object::Number(_))) {
+            return Err(RuntimeError::InfixNonNumberOperandsError.into());
+        }
         let left = left.unwrap_number();
         let right = right.unwrap_number();
         match expr.operator {
@@ -83,10 +85,10 @@ impl ExprVisitor for Evaluator {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::Parser;
-
     use super::Object::*;
     use super::*;
+    use crate::error::RuntimeError::*;
+    use crate::parser::Parser;
     use pretty_assertions::assert_eq;
 
     fn evaluate_expression(input: &'static str) -> Result<Object> {
@@ -142,10 +144,10 @@ mod tests {
         assert("-73", &Number(-73.0));
         assert("--73", &Number(73.0));
 
-        assert_error("-true", &RuntimeError::UnaryMinusOperandError);
-        assert_error("-false", &RuntimeError::UnaryMinusOperandError);
-        assert_error(r#"-"foo""#, &RuntimeError::UnaryMinusOperandError);
-        assert_error(r#"-("foo" + "bar")"#, &RuntimeError::UnaryMinusOperandError);
+        assert_error("-true", &UnaryMinusOperandError);
+        assert_error("-false", &UnaryMinusOperandError);
+        assert_error(r#"-"foo""#, &UnaryMinusOperandError);
+        assert_error(r#"-("foo" + "bar")"#, &UnaryMinusOperandError);
     }
 
     #[test]
@@ -170,6 +172,11 @@ mod tests {
         assert("1 * 2", &Number(2.0));
         assert("1 / 2", &Number(0.5));
         assert("(1 + 2) / -3.0 + 4 * -(5 + 6.5)", &Number(-47.0));
+
+        assert_error(r#"17 + "bar""#, &PlusOperandError);
+        assert_error("42 - true", &InfixNonNumberOperandsError);
+        assert_error(r#""foo" * 42"#, &InfixNonNumberOperandsError);
+        assert_error("2 / true", &InfixNonNumberOperandsError);
     }
 
     #[test]
@@ -190,5 +197,10 @@ mod tests {
         assert(r#""foo" != "bar""#, &Boolean(true));
         assert("(2 + 4) != (3 * 2)", &Boolean(false));
         assert("5 > 4 == (2 < 3 * 6)", &Boolean(true));
+
+        assert_error(r#"17 > "bar""#, &InfixNonNumberOperandsError);
+        assert_error("true < 2", &InfixNonNumberOperandsError);
+        assert_error(r#"42 >= ("foo" + "bar")"#, &InfixNonNumberOperandsError);
+        assert_error("false > true", &InfixNonNumberOperandsError);
     }
 }

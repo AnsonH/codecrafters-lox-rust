@@ -46,6 +46,12 @@ pub enum SyntaxError {
 #[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum RuntimeError {
     // TODO: Show error span after AST supports span
+    #[error("Operands must be numbers.")]
+    InfixNonNumberOperandsError,
+
+    #[error("Operands must be two numbers or two strings.")]
+    PlusOperandError,
+
     #[error("Operand must be a number.")]
     UnaryMinusOperandError,
 }
