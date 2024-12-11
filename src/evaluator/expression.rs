@@ -1,8 +1,11 @@
 use miette::Result;
 
-use crate::ast::{
-    expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
-    BinaryOperator, UnaryOperator,
+use crate::{
+    ast::{
+        expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
+        BinaryOperator, UnaryOperator,
+    },
+    error::RuntimeError,
 };
 
 use super::{object::Object, Evaluator};
@@ -71,7 +74,7 @@ impl ExprVisitor for Evaluator {
                 if let Object::Number(value) = right {
                     Ok(Object::Number(-value))
                 } else {
-                    todo!("handle operand not number")
+                    Err(RuntimeError::UnaryMinusOperandError.into())
                 }
             }
         }
@@ -86,7 +89,7 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn assert(input: &'static str, expected: &Object) {
+    fn evaluate_expression(input: &'static str) -> Result<Object> {
         let parser = Parser::new(input);
         let expr = parser.parse_expression().unwrap_or_else(|report| {
             panic!(
@@ -95,12 +98,24 @@ mod tests {
             )
         });
         let mut evaluator = Evaluator;
-        match evaluator.evaluate_expression(&expr) {
+        evaluator.evaluate_expression(&expr)
+    }
+
+    fn assert(input: &'static str, expected: &Object) {
+        match evaluate_expression(input) {
             Ok(obj) => assert_eq!(obj, *expected),
             Err(report) => panic!(
                 "Encountered error while evaluation\n{:?}",
                 report.with_source_code(input)
             ),
+        }
+    }
+
+    fn assert_error(input: &'static str, expected: &RuntimeError) {
+        let report = evaluate_expression(input).expect_err("Evaluator should emit error");
+        match report.downcast_ref::<RuntimeError>() {
+            Some(err) => assert_eq!(err, expected),
+            None => panic!("Evaluator should emit RuntimeError"),
         }
     }
 
@@ -123,10 +138,18 @@ mod tests {
     }
 
     #[test]
-    fn test_unary_expression() {
+    fn test_unary_minus() {
         assert("-73", &Number(-73.0));
         assert("--73", &Number(73.0));
 
+        assert_error("-true", &RuntimeError::UnaryMinusOperandError);
+        assert_error("-false", &RuntimeError::UnaryMinusOperandError);
+        assert_error(r#"-"foo""#, &RuntimeError::UnaryMinusOperandError);
+        assert_error(r#"-("foo" + "bar")"#, &RuntimeError::UnaryMinusOperandError);
+    }
+
+    #[test]
+    fn test_logical_not() {
         assert("!true", &Boolean(false));
         assert("!((false))", &Boolean(true));
         assert("!!false", &Boolean(false));

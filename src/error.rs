@@ -42,6 +42,14 @@ pub enum SyntaxError {
     },
 }
 
+/// Runtime errors during evaluation.
+#[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
+pub enum RuntimeError {
+    // TODO: Show error span after AST supports span
+    #[error("Operand must be a number.")]
+    UnaryMinusOperandError,
+}
+
 impl SyntaxError {
     /// Consumes and prints the error to stderr
     // TODO: Deprecate this with a custom `miette::ReportHandler` implementation
