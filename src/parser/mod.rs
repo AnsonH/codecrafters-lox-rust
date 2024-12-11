@@ -38,6 +38,7 @@ impl<'src> Parser<'src> {
             return Ok(Expr::Literal(
                 LiteralExpr {
                     value: Literal::Nil,
+                    span: self.cur_span(),
                 }
                 .into(),
             ));
@@ -63,6 +64,12 @@ impl<'src> Parser<'src> {
     #[inline]
     pub(crate) fn cur_token(&self) -> Token {
         self.token
+    }
+
+    /// Get current token's span.
+    #[inline]
+    pub(crate) fn cur_span(&self) -> Span {
+        self.token.span
     }
 
     /// Get current token's source text.

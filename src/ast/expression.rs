@@ -1,3 +1,5 @@
+use crate::span::Span;
+
 use super::{BinaryOperator, UnaryOperator};
 
 /// Expression produces a value.
@@ -27,6 +29,18 @@ impl<'src> Expr<'src> {
             Expr::Unary(expr) => visitor.visit_unary_expr(expr),
         }
     }
+
+    /// Gets the [Span] of the current node.
+    pub fn span(&self) -> Span {
+        // Yes this looks tedious since we cannot inherit structs in Rust
+        match self {
+            Expr::Binary(b) => b.span,
+            Expr::Grouping(g) => g.span,
+            Expr::Identifier(i) => i.span,
+            Expr::Literal(l) => l.span,
+            Expr::Unary(u) => u.span,
+        }
+    }
 }
 
 /// Visitor for [Expr] AST nodes.
@@ -54,24 +68,28 @@ pub struct Binary<'src> {
     pub left: Expr<'src>,
     pub operator: BinaryOperator,
     pub right: Expr<'src>,
+    pub span: Span,
 }
 
 /// Grouped expression using parenthesis (e.g. `("foo")`)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Grouping<'src> {
     pub expression: Expr<'src>,
+    pub span: Span,
 }
 
 /// Identifier (e.g. variable, function name)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier<'src> {
     pub name: &'src str,
+    pub span: Span,
 }
 
 /// Literal expression
 #[derive(Debug, Clone, PartialEq)]
 pub struct LiteralExpr<'src> {
     pub value: Literal<'src>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -87,4 +105,5 @@ pub enum Literal<'src> {
 pub struct Unary<'src> {
     pub operator: UnaryOperator,
     pub right: Expr<'src>,
+    pub span: Span,
 }

@@ -24,7 +24,7 @@ use std::{
 /// # Implementation
 ///
 /// Heavily inspired by [`oxc_span`](https://github.com/oxc-project/oxc/blob/main/crates/oxc_span/src/span/mod.rs).
-#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     /// The zero-based start offset of the span
     pub start: u32,
@@ -60,6 +60,21 @@ impl Span {
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.start == self.end
+    }
+
+    /// Create a new [Span] covering the maximum range of two Spans.
+    ///
+    /// # Example
+    /// ```
+    /// use rust_lox::span::Span;
+    ///
+    /// let span1 = Span::new(2, 7);
+    /// let span2 = Span::new(4, 9);
+    /// assert_eq!(span1.merge(&span2), Span::new(2, 9));
+    /// assert_eq!(span2.merge(&span1), Span::new(2, 9));
+    /// ```
+    pub fn merge(&self, other: &Self) -> Self {
+        Self::new(self.start.min(other.start), self.end.max(other.end))
     }
 
     /// Creates a new [Span] that has its start and end positions shrunk by

@@ -21,7 +21,7 @@ impl<'src> Parser<'src> {
             TokenKind::Identifier => self.parse_identifier()?,
             _ => {
                 return Err(SyntaxError::MissingExpression {
-                    span: self.cur_token().span.into(),
+                    span: self.cur_span().into(),
                 }
                 .into())
             }
@@ -56,35 +56,44 @@ impl<'src> Parser<'src> {
     }
 
     pub(crate) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
+        let open_paren_span = self.cur_span();
+
         self.advance()?; // Consume `(`
-        let expr = self.parse_expr(0)?;
+        let expression = self.parse_expr(0)?;
         self.expect(TokenKind::RightParen)?;
-        Ok(Expr::Grouping(Grouping { expression: expr }.into()))
+
+        let span = self.cur_span().merge(&open_paren_span);
+        Ok(Expr::Grouping(Grouping { expression, span }.into()))
     }
 
     pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
-        let name = &self.source[self.cur_token().span];
-        Ok(Expr::Identifier(Identifier { name }.into()))
+        let name = &self.source[self.cur_span()];
+        let span = self.cur_span();
+        Ok(Expr::Identifier(Identifier { name, span }.into()))
     }
 
-    pub(crate) fn parse_infix_expression(&mut self, lhs: Expr<'src>) -> Result<Expr<'src>> {
+    pub(crate) fn parse_infix_expression(&mut self, left: Expr<'src>) -> Result<Expr<'src>> {
         let op_kind = self.cur_kind();
+        self.advance()?; // Consume operator
+
         let (_, rhs_prec) =
             infix_precedence(op_kind).expect("current token should be an infix operator");
+        let right = self.parse_expr(rhs_prec)?;
 
-        self.advance()?; // Consume operator
-        let rhs = self.parse_expr(rhs_prec)?;
+        let span = self.cur_span().merge(&left.span());
         Ok(Expr::Binary(
             Binary {
-                left: lhs,
+                left,
                 operator: BinaryOperator::from(op_kind),
-                right: rhs,
+                right,
+                span,
             }
             .into(),
         ))
     }
 
     pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
+        let span = self.cur_span();
         let value = match self.cur_kind() {
             TokenKind::Nil => Literal::Nil,
             TokenKind::True => Literal::Boolean(true),
@@ -96,26 +105,36 @@ impl<'src> Parser<'src> {
             }
             TokenKind::String => {
                 // The token span includes the `"` quotes, so exclude them
-                let span_without_quotes = self.cur_token().span.shrink(1);
+                let span_without_quotes = self.cur_span().shrink(1);
                 let value = &self.source[span_without_quotes];
                 Literal::String(value)
             }
             _ => unreachable!("unexpected literal kind: {}", self.cur_kind()),
         };
-        Ok(Expr::Literal(LiteralExpr { value }.into()))
+        Ok(Expr::Literal(LiteralExpr { value, span }.into()))
     }
 
     pub(crate) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
+        let op_span = self.cur_span();
         let operator = match self.cur_kind() {
             TokenKind::Minus => UnaryOperator::UnaryMinus,
             TokenKind::Bang => UnaryOperator::LogicalNot,
             _ => unreachable!("unexpected unary operator: {}", self.cur_kind()),
         };
-        self.advance()?;
 
+        self.advance()?;
         let (_, rhs_prec) = prefix_precedence(operator);
         let right = self.parse_expr(rhs_prec)?;
-        Ok(Expr::Unary(Unary { operator, right }.into()))
+
+        let span = self.cur_span().merge(&op_span);
+        Ok(Expr::Unary(
+            Unary {
+                operator,
+                right,
+                span,
+            }
+            .into(),
+        ))
     }
 }
 
@@ -246,5 +265,21 @@ mod tests {
             "1 < 2 + 3 != 4 * 5 < 6 + 7",
             "(!= (< 1.0 (+ 2.0 3.0)) (< (* 4.0 5.0) (+ 6.0 7.0)))",
         );
+    }
+
+    #[test]
+    fn test_span() {
+        let input = r#"  1 + (23)"#;
+        let parser = Parser::new(input);
+        let binary_expr = parser.parse_expression().expect("No SyntaxError");
+
+        assert_eq!(binary_expr.span(), (2, 10).into());
+        match binary_expr {
+            Expr::Binary(binary) => {
+                assert_eq!(binary.left.span(), (2, 3).into());
+                assert_eq!(binary.right.span(), (6, 10).into());
+            }
+            _ => panic!("should be Binary expression"),
+        }
     }
 }
