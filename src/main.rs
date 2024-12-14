@@ -53,6 +53,11 @@ enum Commands {
         /// Path to a `.lox` file.
         filename: PathBuf,
     },
+    /// Executes a Lox program.
+    Run {
+        /// Path to a `.lox` file.
+        filename: PathBuf,
+    },
 }
 
 fn read_file(filename: &PathBuf) -> Result<NamedSource<String>> {
@@ -130,6 +135,24 @@ fn main() -> Result<()> {
                     eprintln!("{:?}", report.with_source_code(source));
                     std::process::exit(ExitCode::RuntimeError as i32);
                 }
+            }
+        }
+        Commands::Run { filename } => {
+            let source = read_file(filename)?;
+
+            let parser = Parser::new(source.inner());
+            let program = match parser.parse_program() {
+                Ok(program) => program,
+                Err(report) => {
+                    eprintln!("{:?}", report.with_source_code(source));
+                    std::process::exit(ExitCode::LexicalError as i32);
+                }
+            };
+
+            let mut evaluator = Evaluator;
+            if let Err(report) = evaluator.evaluate_program(&program) {
+                eprintln!("{:?}", report.with_source_code(source));
+                std::process::exit(ExitCode::RuntimeError as i32);
             }
         }
     }
