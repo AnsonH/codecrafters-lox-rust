@@ -42,9 +42,10 @@ impl<'src> Parser<'src> {
         let mut body: Vec<Stmt<'src>> = vec![];
 
         self.advance()?;
-        while !self.is_peek_kind(TokenKind::Eof) {
+        while !self.is_cur_kind(TokenKind::Eof) {
             let statement = self.parse_statement()?;
             body.push(statement);
+            self.advance()?;
         }
 
         let span = Span::new(0, self.source.len() as u32);
@@ -59,7 +60,7 @@ impl<'src> Parser<'src> {
     /// any errors.
     pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
         self.advance()?;
-        if self.cur_kind() == TokenKind::Eof {
+        if self.is_cur_kind(TokenKind::Eof) {
             return Ok(Expr::Literal(
                 LiteralExpr {
                     value: Literal::Nil,
@@ -134,8 +135,9 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// Whether the peek token is a certain [TokenKind].
-    pub(crate) fn is_peek_kind(&mut self, kind: TokenKind) -> bool {
-        matches!(self.lexer.peek(), Some(Ok(Token { kind: k, .. })) if kind == *k)
+    /// Whether the current token is a certain [TokenKind].
+    #[inline]
+    pub(crate) fn is_cur_kind(&self, kind: TokenKind) -> bool {
+        self.token.kind == kind
     }
 }

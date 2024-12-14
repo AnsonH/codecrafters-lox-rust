@@ -145,16 +145,16 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn assert(input: &str, expected: &str) {
+    fn assert(input: &'static str, expected: &str) {
         let parser = Parser::new(input);
         let mut printer = AstPrefixPrinter;
 
         match parser.parse_expression() {
-            Ok(expr) => assert_eq!(printer.print(&expr), expected),
-            Err(report) => {
-                eprintln!("{report:?}");
-                panic!("Encountered an error");
-            }
+            Ok(expr) => assert_eq!(printer.print_expression(&expr), expected),
+            Err(report) => panic!(
+                "Encountered error while parsing\n{:?}",
+                report.with_source_code(input)
+            ),
         }
     }
 

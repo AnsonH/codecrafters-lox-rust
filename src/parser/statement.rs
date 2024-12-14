@@ -48,9 +48,36 @@ mod tests {
         }
     }
 
+    fn assert_error(input: &str, expected: SyntaxError) {
+        let parser = Parser::new(input);
+        let report = parser
+            .parse_program()
+            .expect_err("Parser should emit error");
+
+        match report.downcast_ref::<SyntaxError>() {
+            Some(err) => assert_eq!(*err, expected),
+            None => panic!("Parser should emit a SyntaxError"),
+        }
+    }
+
     #[test]
     fn test_print_statement() {
         assert("print 42;", &["(print 42.0)"]);
         assert("print 1 + 2;", &["(print (+ 1.0 2.0))"]);
+
+        assert_error(
+            "print",
+            SyntaxError::MissingExpression {
+                span: Span::new(5, 5),
+            },
+        );
+        assert_error(
+            "print 1",
+            SyntaxError::UnexpectedToken {
+                expected: ";".into(),
+                actual: "EOF".into(),
+                span: Span::new(7, 7),
+            },
+        );
     }
 }
