@@ -5,12 +5,16 @@ pub mod operator;
 pub mod printer;
 pub mod statement;
 
+// TODO: `pub use` more symbols
 pub use expression::{Expr, Literal};
 pub use operator::{BinaryOperator, UnaryOperator};
 pub use statement::Stmt;
 
+use crate::span::Span;
+
 /// Root AST node that represents the whole program.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Program {
-    pub body: Vec<Stmt>,
+pub struct Program<'src> {
+    pub body: Vec<Stmt<'src>>,
+    pub span: Span,
 }

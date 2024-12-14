@@ -1,11 +1,12 @@
 //! Parser for the Lox language.
 
 mod expression;
+mod statement;
 
 use std::iter::Peekable;
 
 use crate::{
-    ast::{expression::LiteralExpr, Expr, Literal},
+    ast::{expression::LiteralExpr, Expr, Literal, Program, Stmt},
     error::SyntaxError,
     lexer::Lexer,
     span::Span,
@@ -31,7 +32,31 @@ impl<'src> Parser<'src> {
         }
     }
 
+    /// Main entry point for parsing a program.
+    ///
+    /// # Returns
+    ///
+    /// An `Ok` with [Program] if there are no syntax errors, or `Err` if there
+    /// are any errors.
+    pub fn parse_program(mut self) -> miette::Result<Program<'src>> {
+        let mut body: Vec<Stmt<'src>> = vec![];
+
+        self.advance()?;
+        while !self.is_peek_kind(TokenKind::Eof) {
+            let statement = self.parse_statement()?;
+            body.push(statement);
+        }
+
+        let span = Span::new(0, self.source.len() as u32);
+        Ok(Program { body, span })
+    }
+
     /// Parses an expression (e.g. `1 + 2 * 3`).
+    ///
+    /// # Returns
+    ///
+    /// An `Ok` with [Expr] if there are no syntax errors, or `Err` if there are
+    /// any errors.
     pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
         self.advance()?;
         if self.cur_kind() == TokenKind::Eof {
@@ -90,7 +115,7 @@ impl<'src> Parser<'src> {
                     Err(SyntaxError::UnexpectedToken {
                         expected: expected.to_str().into(),
                         actual: token.kind.to_str().into(),
-                        span: token.span.into(),
+                        span: token.span,
                     }
                     .into())
                 }
@@ -102,10 +127,15 @@ impl<'src> Parser<'src> {
                 Err(SyntaxError::UnexpectedToken {
                     expected: expected.to_str().into(),
                     actual: TokenKind::Eof.to_str().into(),
-                    span: span.into(),
+                    span,
                 }
                 .into())
             }
         }
+    }
+
+    /// Whether the peek token is a certain [TokenKind].
+    pub(crate) fn is_peek_kind(&mut self, kind: TokenKind) -> bool {
+        matches!(self.lexer.peek(), Some(Ok(Token { kind: k, .. })) if kind == *k)
     }
 }
