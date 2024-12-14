@@ -31,20 +31,12 @@ impl ExprVisitor for Evaluator {
                     return Ok(Object::String(format!("{lhs}{rhs}")));
                 }
                 (Object::Number(lhs), Object::Number(rhs)) => return Ok(Object::Number(lhs + rhs)),
-                _ => {
-                    return Err(RuntimeError::PlusOperandError {
-                        span: expr.span.into(),
-                    }
-                    .into())
-                }
+                _ => return Err(RuntimeError::PlusOperandError { span: expr.span }.into()),
             }
         }
 
         if !matches!((&left, &right), (Object::Number(_), Object::Number(_))) {
-            return Err(RuntimeError::InfixNonNumberOperandsError {
-                span: expr.span.into(),
-            }
-            .into());
+            return Err(RuntimeError::InfixNonNumberOperandsError { span: expr.span }.into());
         }
         let left = left.unwrap_number();
         let right = right.unwrap_number();
@@ -85,7 +77,7 @@ impl ExprVisitor for Evaluator {
                     Ok(Object::Number(-value))
                 } else {
                     Err(RuntimeError::UnaryMinusOperandError {
-                        span: expr.right.span().into(),
+                        span: expr.right.span(),
                     }
                     .into())
                 }
@@ -159,13 +151,13 @@ mod tests {
         assert_error(
             "-true",
             &UnaryMinusOperandError {
-                span: Span::new(1, 5).into(),
+                span: Span::new(1, 5),
             },
         );
         assert_error(
             r#"-("foo" + "bar")"#,
             &UnaryMinusOperandError {
-                span: Span::new(1, 16).into(),
+                span: Span::new(1, 16),
             },
         );
     }
@@ -196,25 +188,25 @@ mod tests {
         assert_error(
             r#"17 + "bar""#,
             &PlusOperandError {
-                span: Span::new(0, 10).into(),
+                span: Span::new(0, 10),
             },
         );
         assert_error(
             "42 - true",
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 9).into(),
+                span: Span::new(0, 9),
             },
         );
         assert_error(
             r#""foo" * 42"#,
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 10).into(),
+                span: Span::new(0, 10),
             },
         );
         assert_error(
             "2 / true",
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 8).into(),
+                span: Span::new(0, 8),
             },
         );
     }
@@ -241,25 +233,25 @@ mod tests {
         assert_error(
             r#"17 > "bar""#,
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 10).into(),
+                span: Span::new(0, 10),
             },
         );
         assert_error(
             "true < 2",
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 8).into(),
+                span: Span::new(0, 8),
             },
         );
         assert_error(
             r#"42 >= ("foo" + "bar")"#,
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 21).into(),
+                span: Span::new(0, 21),
             },
         );
         assert_error(
             "false > true",
             &InfixNonNumberOperandsError {
-                span: Span::new(0, 12).into(),
+                span: Span::new(0, 12),
             },
         );
     }

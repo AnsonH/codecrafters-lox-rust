@@ -21,7 +21,7 @@ impl<'src> Parser<'src> {
             TokenKind::Identifier => self.parse_identifier()?,
             _ => {
                 return Err(SyntaxError::MissingExpression {
-                    span: self.cur_span().into(),
+                    span: self.cur_span(),
                 }
                 .into())
             }
@@ -140,7 +140,7 @@ impl<'src> Parser<'src> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::printer::AstPrefixPrinter;
+    use crate::{ast::printer::AstPrefixPrinter, span::Span};
 
     use super::*;
     use pretty_assertions::assert_eq;
@@ -195,7 +195,7 @@ mod tests {
             SyntaxError::UnexpectedToken {
                 expected: ")".into(),
                 actual: "EOF".into(),
-                span: (5, 0).into(),
+                span: Span::new(5, 5),
             },
         );
     }
@@ -210,7 +210,7 @@ mod tests {
         assert_error(
             "!",
             SyntaxError::MissingExpression {
-                span: (1, 0).into(),
+                span: Span::new(1, 1),
             },
         );
     }
@@ -245,7 +245,7 @@ mod tests {
         assert_error(
             "1 +",
             SyntaxError::MissingExpression {
-                span: (3, 0).into(),
+                span: Span::new(3, 3),
             },
         );
     }

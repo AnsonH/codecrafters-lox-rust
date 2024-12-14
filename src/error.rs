@@ -1,6 +1,8 @@
 use clap::ValueEnum;
-use miette::{Diagnostic, Report, SourceSpan};
+use miette::{Diagnostic, Report};
 use thiserror::Error;
+
+use crate::span::Span;
 
 /// CLI option to control error reporting format.
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -18,28 +20,28 @@ pub enum SyntaxError {
     #[error("Expected an expression")]
     MissingExpression {
         #[label("here")]
-        span: SourceSpan,
+        span: Span,
     },
 
     #[error("Unexpected character: {token}")]
     SingleTokenError {
         token: char,
-        #[label("This character")]
-        span: SourceSpan,
+        #[label("this character")]
+        span: Span,
     },
 
     #[error("Expected `{expected}` but found `{actual}`")]
     UnexpectedToken {
         expected: String,
         actual: String,
-        #[label("This token")]
-        span: SourceSpan,
+        #[label("this token")]
+        span: Span,
     },
 
     #[error("Unterminated string.")]
     UnterminatedStringError {
-        #[label("This string literal")]
-        span: SourceSpan,
+        #[label("this string literal")]
+        span: Span,
     },
 }
 
@@ -48,20 +50,20 @@ pub enum SyntaxError {
 pub enum RuntimeError {
     #[error("Operands must be numbers.")]
     InfixNonNumberOperandsError {
-        #[label("This expression")]
-        span: SourceSpan,
+        #[label("this expression")]
+        span: Span,
     },
 
     #[error("Operands must be two numbers or two strings.")]
     PlusOperandError {
-        #[label("This expression")]
-        span: SourceSpan,
+        #[label("this expression")]
+        span: Span,
     },
 
     #[error("Operand must be a number.")]
     UnaryMinusOperandError {
-        #[label("This operand")]
-        span: SourceSpan,
+        #[label("this operand")]
+        span: Span,
     },
 }
 
@@ -84,15 +86,18 @@ impl SyntaxError {
 
     /// Starting line number of the error
     fn line_start(&self, source_code: &str) -> usize {
-        let offset = match self {
-            Self::MissingExpression { span, .. } => span.offset(),
-            Self::SingleTokenError { span, .. } => span.offset(),
-            Self::UnexpectedToken { span, .. } => span.offset(),
-            Self::UnterminatedStringError { span, .. } => span.offset(),
-        };
-
-        let src_until_err = &source_code[..=offset];
+        let span_until_err = Span::new(0, self.span().start + 1);
+        let src_until_err = &source_code[span_until_err];
         src_until_err.lines().count()
+    }
+
+    fn span(&self) -> Span {
+        match self {
+            Self::MissingExpression { span, .. } => *span,
+            Self::SingleTokenError { span, .. } => *span,
+            Self::UnexpectedToken { span, .. } => *span,
+            Self::UnterminatedStringError { span, .. } => *span,
+        }
     }
 }
 
@@ -105,14 +110,14 @@ mod tests {
     fn test_line_start() {
         let source_code = "\"hi\nbye";
         let error = SyntaxError::UnterminatedStringError {
-            span: (0, 7).into(), // (offset, length)
+            span: Span::new(0, 8),
         };
         assert_eq!(error.line_start(source_code), 1);
 
         let source_code = "1\n2\n@";
         let error = SyntaxError::SingleTokenError {
             token: '@',
-            span: (4, 1).into(),
+            span: Span::new(4, 5),
         };
         assert_eq!(error.line_start(source_code), 3);
     }

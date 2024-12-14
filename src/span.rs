@@ -114,9 +114,25 @@ impl From<Span> for Range<usize> {
     }
 }
 
+/// This allows us to use `Span` in enums derived with
+/// [miette](https://docs.rs/miette)'s `Diagnostic`, for example:
+///
+/// ```no_run
+/// use miette::Diagnostic;
+/// use thiserror::Error;
+/// use rust_lox::span::Span;
+///
+/// #[derive(Error, Diagnostic, Debug)]
+/// enum MyError {
+///     #[error("Some error")]
+///     SomeError {
+///         #[label("here")]
+///         span: Span,  // Use `Span` instead of `miette::SourceSpan`
+///     },
+/// }
+/// ```
 impl From<Span> for miette::SourceSpan {
     fn from(span: Span) -> Self {
-        // Unfortunately miette uses usize for spans
         (span.start as usize, span.len() as usize).into()
     }
 }
