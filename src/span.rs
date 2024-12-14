@@ -62,6 +62,19 @@ impl Span {
         self.start == self.end
     }
 
+    /// Creates a new [Span] with the end position moved to right by `offset` bytes.
+    ///
+    /// # Example
+    /// ```
+    /// use rust_lox::span::Span;
+    /// let span = Span::new(4, 10);
+    /// assert_eq!(span.expand_right(2), Span::new(4, 12));
+    /// ```
+    #[inline]
+    pub fn expand_right(&self, offset: u32) -> Self {
+        Self::new(self.start, self.end + offset)
+    }
+
     /// Create a new [Span] covering the maximum range of two Spans.
     ///
     /// # Example
@@ -78,7 +91,7 @@ impl Span {
     }
 
     /// Creates a new [Span] that has its start and end positions shrunk by
-    /// `offset` amount.
+    /// `offset` bytes.
     ///
     /// # Example
     /// ```

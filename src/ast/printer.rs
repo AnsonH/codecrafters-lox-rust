@@ -1,8 +1,4 @@
-use super::{
-    expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
-    statement::{PrintStmt, StmtVisitor},
-    Expr, Literal, Program,
-};
+use super::{expression::*, statement::*, Expr, Literal, Program};
 
 /// Prints AST in a [prefix notation](https://en.wikipedia.org/wiki/Polish_notation)
 /// format that matches the [official Lox test specs](https://github.com/munificent/craftinginterpreters/blob/master/test/expressions/parse.lox).
@@ -56,6 +52,10 @@ impl AstPrefixPrinter {
 
 impl StmtVisitor for AstPrefixPrinter {
     type Value = String;
+
+    fn visit_expression_stmt(&mut self, expr: &ExpressionStmt) -> Self::Value {
+        expr.expression.accept(self)
+    }
 
     fn visit_print_stmt(&mut self, expr: &PrintStmt) -> Self::Value {
         self.parenthesize("print", vec![&expr.expression])

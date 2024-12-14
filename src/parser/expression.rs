@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expression::{Binary, Grouping, Identifier, LiteralExpr, Unary},
+        expression::*,
         operator::{infix_precedence, prefix_precedence},
         BinaryOperator, Expr, Literal, UnaryOperator,
     },

@@ -1,7 +1,7 @@
 use miette::Result;
 
 use crate::{
-    ast::{statement::PrintStmt, Stmt},
+    ast::{statement::*, Stmt},
     token::TokenKind,
 };
 
@@ -12,8 +12,18 @@ impl<'src> Parser<'src> {
     pub(crate) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
             TokenKind::Print => self.parse_print_statement(),
-            _ => todo!("parse expr statement or throw error?"),
+            _ => self.parse_expression_statement(),
         }
+    }
+
+    pub(crate) fn parse_expression_statement(&mut self) -> Result<Stmt<'src>> {
+        let expression = self.parse_expr(0)?;
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = expression.span().expand_right(1);
+        Ok(Stmt::ExpressionStmt(
+            ExpressionStmt { expression, span }.into(),
+        ))
     }
 
     pub(crate) fn parse_print_statement(&mut self) -> Result<Stmt<'src>> {
