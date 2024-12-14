@@ -1,32 +1,44 @@
 use super::{
     expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
-    Expr, Literal,
+    statement::{PrintStmt, StmtVisitor},
+    Expr, Literal, Program,
 };
 
 /// Prints AST in a [prefix notation](https://en.wikipedia.org/wiki/Polish_notation)
 /// format that matches the [official Lox test specs](https://github.com/munificent/craftinginterpreters/blob/master/test/expressions/parse.lox).
+///
+/// The official specs only specified the format for expressions, so the printing
+/// of statements uses a custom format.
 ///
 /// # Example
 /// ```
 /// use rust_lox::ast::printer::AstPrefixPrinter;
 /// use rust_lox::parser::Parser;
 ///
-/// let input = "1 + 2 * 3";
+/// let input = "print 1 + 2;";
 ///
 /// let parser = Parser::new(input);
-/// let expr = parser.parse_expression().unwrap();
+/// let program = parser.parse_program().unwrap();
 ///
 /// let mut printer = AstPrefixPrinter;
-/// assert_eq!(printer.print(&expr), "(+ 1.0 (* 2.0 3.0))".to_string());
+/// assert_eq!(
+///     printer.print_program(&program),
+///     vec!["(print (+ 1.0 2.0))".to_string()],
+/// );
 /// ```
 pub struct AstPrefixPrinter;
 
 impl AstPrefixPrinter {
-    /// Main entry point, which prints the expression in a
+    /// Prints each statement of the program's body as a string.
+    pub fn print_program(&mut self, program: &Program) -> Vec<String> {
+        program.body.iter().map(|stmt| stmt.accept(self)).collect()
+    }
+
+    /// Prints an expression in a
     /// [prefix notation](https://en.wikipedia.org/wiki/Polish_notation).
     ///
-    /// See [AstPrefixPrinter] for example.
-    pub fn print(&mut self, expr: &Expr) -> String {
+    /// For an example, see [AstPrefixPrinter]'s "Example" section.
+    pub fn print_expression(&mut self, expr: &Expr) -> String {
         expr.accept(self)
     }
 
@@ -39,6 +51,14 @@ impl AstPrefixPrinter {
         }
         output.push(')');
         output
+    }
+}
+
+impl StmtVisitor for AstPrefixPrinter {
+    type Value = String;
+
+    fn visit_print_stmt(&mut self, expr: &PrintStmt) -> Self::Value {
+        self.parenthesize("print", vec![&expr.expression])
     }
 }
 

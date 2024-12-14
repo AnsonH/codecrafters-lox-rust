@@ -10,7 +10,6 @@ use super::Parser;
 impl<'src> Parser<'src> {
     /// Entry point for parsing a statement.
     pub(crate) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
-        dbg!(self.cur_kind());
         match self.cur_kind() {
             TokenKind::Print => self.parse_print_statement(),
             _ => todo!("parse expr statement or throw error?"),
@@ -31,36 +30,27 @@ impl<'src> Parser<'src> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{expression::LiteralExpr, Expr, Literal},
-        span::Span,
-    };
+    use crate::{ast::printer::AstPrefixPrinter, error::SyntaxError, span::Span};
 
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn assert(input: &str, expected_body: &Vec<Stmt>) {
+    fn assert(input: &'static str, expected: &[&str]) {
         let parser = Parser::new(input);
-        let program = parser.parse_program().expect("no SyntaxError");
-        assert_eq!(program.body, *expected_body);
+        let mut printer = AstPrefixPrinter;
+
+        match parser.parse_program() {
+            Ok(expr) => assert_eq!(printer.print_program(&expr), expected),
+            Err(report) => panic!(
+                "Encountered error while parsing\n{:?}",
+                report.with_source_code(input)
+            ),
+        }
     }
 
     #[test]
     fn test_print_statement() {
-        let input = "print 42;";
-        let body = vec![Stmt::PrintStmt(
-            PrintStmt {
-                expression: Expr::Literal(
-                    LiteralExpr {
-                        value: Literal::Number(42.0),
-                        span: Span::new(6, 8),
-                    }
-                    .into(),
-                ),
-                span: Span::new(0, 9),
-            }
-            .into(),
-        )];
-        assert(input, &body);
+        assert("print 42;", &["(print 42.0)"]);
+        assert("print 1 + 2;", &["(print (+ 1.0 2.0))"]);
     }
 }

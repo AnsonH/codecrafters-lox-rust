@@ -102,7 +102,7 @@ fn main() -> Result<()> {
             let mut printer = AstPrefixPrinter;
 
             match parser.parse_expression() {
-                Ok(expr) => println!("{}", printer.print(&expr)),
+                Ok(expr) => println!("{}", printer.print_expression(&expr)),
                 Err(report) => {
                     // TODO: Implement a new `miette::ReportHandler` that can emit
                     // Lox-styled simple error reports
