@@ -1,5 +1,6 @@
 use clap::ValueEnum;
 use miette::{Diagnostic, Report, SourceSpan};
+use thiserror::Error;
 
 /// CLI option to control error reporting format.
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -12,7 +13,7 @@ pub enum ErrorFormat {
 }
 
 /// Syntax errors when lexing/parsing the source code.
-#[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
+#[derive(Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum SyntaxError {
     #[error("Expected an expression")]
     MissingExpression {
@@ -43,17 +44,25 @@ pub enum SyntaxError {
 }
 
 /// Runtime errors during evaluation.
-#[derive(thiserror::Error, Diagnostic, Clone, Debug, PartialEq)]
+#[derive(Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum RuntimeError {
-    // TODO: Show error span after AST supports span
     #[error("Operands must be numbers.")]
-    InfixNonNumberOperandsError,
+    InfixNonNumberOperandsError {
+        #[label("This expression")]
+        span: SourceSpan,
+    },
 
     #[error("Operands must be two numbers or two strings.")]
-    PlusOperandError,
+    PlusOperandError {
+        #[label("This expression")]
+        span: SourceSpan,
+    },
 
     #[error("Operand must be a number.")]
-    UnaryMinusOperandError,
+    UnaryMinusOperandError {
+        #[label("This operand")]
+        span: SourceSpan,
+    },
 }
 
 impl SyntaxError {
