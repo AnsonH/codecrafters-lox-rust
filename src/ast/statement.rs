@@ -1,6 +1,6 @@
 use crate::span::Span;
 
-use super::Expr;
+use super::expression::*;
 
 /// Statement produces side effects, and doesn't evaluate to a value.
 ///
@@ -12,6 +12,7 @@ use super::Expr;
 pub enum Stmt<'src> {
     ExpressionStatement(Box<ExpressionStatement<'src>>),
     PrintStatement(Box<PrintStatement<'src>>),
+    VarStatement(Box<VarStatement<'src>>),
 }
 
 impl<'src> Stmt<'src> {
@@ -21,14 +22,16 @@ impl<'src> Stmt<'src> {
         match self {
             Stmt::ExpressionStatement(expr) => visitor.visit_expression_stmt(expr),
             Stmt::PrintStatement(expr) => visitor.visit_print_stmt(expr),
+            Stmt::VarStatement(expr) => visitor.visit_var_stmt(expr),
         }
     }
 
     /// Gets the [Span] of the current node.
     pub fn span(&self) -> Span {
         match self {
-            Self::ExpressionStatement(e) => e.span,
-            Self::PrintStatement(p) => p.span,
+            Self::ExpressionStatement(s) => s.span,
+            Self::PrintStatement(s) => s.span,
+            Self::VarStatement(s) => s.span,
         }
     }
 }
@@ -47,6 +50,7 @@ pub trait StmtVisitor {
 
     fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value;
     fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value;
+    fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value;
 }
 
 /// Syntax: `<expression>;`
@@ -60,5 +64,15 @@ pub struct ExpressionStatement<'src> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintStatement<'src> {
     pub expression: Expr<'src>,
+    pub span: Span,
+}
+
+/// Syntax:
+/// - `var <name>;`
+/// - `var <name> = <expression>;`
+#[derive(Debug, Clone, PartialEq)]
+pub struct VarStatement<'src> {
+    pub name: Identifier<'src>,
+    pub initializer: Option<Expr<'src>>,
     pub span: Span,
 }

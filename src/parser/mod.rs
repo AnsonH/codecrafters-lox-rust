@@ -105,7 +105,7 @@ impl<'src> Parser<'src> {
         &self.source[self.cur_token().span]
     }
 
-    /// Consumes the next token if it equals to `expected`.
+    /// Consumes the next token if it equals to `expected`, otherwise returns `Err`.
     pub(crate) fn expect(&mut self, expected: TokenKind) -> miette::Result<()> {
         match self.lexer.peek() {
             Some(Ok(token)) => {
@@ -139,5 +139,10 @@ impl<'src> Parser<'src> {
     #[inline]
     pub(crate) fn is_cur_kind(&self, kind: TokenKind) -> bool {
         self.token.kind == kind
+    }
+
+    /// Whether the peek token is a certain [TokenKind].
+    pub(crate) fn is_peek_kind(&mut self, kind: TokenKind) -> bool {
+        matches!(self.lexer.peek(), Some(Ok(Token { kind: k, .. })) if *k == kind)
     }
 }

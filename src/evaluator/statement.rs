@@ -16,4 +16,8 @@ impl StmtVisitor for Evaluator {
         println!("{}", expr.expression.accept(self)?);
         Ok(())
     }
+
+    fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value {
+        todo!()
+    }
 }

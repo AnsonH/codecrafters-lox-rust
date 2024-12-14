@@ -60,6 +60,16 @@ impl StmtVisitor for AstPrefixPrinter {
     fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value {
         self.parenthesize("print", vec![&expr.expression])
     }
+
+    fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value {
+        let mut output = format!("(var {}", expr.name.name);
+        if let Some(initializer) = &expr.initializer {
+            output.push(' ');
+            output.push_str(&initializer.accept(self));
+        }
+        output.push(')');
+        output
+    }
 }
 
 impl ExprVisitor for AstPrefixPrinter {

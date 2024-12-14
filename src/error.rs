@@ -23,6 +23,12 @@ pub enum SyntaxError {
         span: Span,
     },
 
+    #[error("Expect variable name.")]
+    MissingVariableName {
+        #[label("here")]
+        span: Span,
+    },
+
     #[error("Unexpected character: {token}")]
     SingleTokenError {
         token: char,
@@ -94,6 +100,7 @@ impl SyntaxError {
     fn span(&self) -> Span {
         match self {
             Self::MissingExpression { span, .. } => *span,
+            Self::MissingVariableName { span, .. } => *span,
             Self::SingleTokenError { span, .. } => *span,
             Self::UnexpectedToken { span, .. } => *span,
             Self::UnterminatedStringError { span, .. } => *span,
