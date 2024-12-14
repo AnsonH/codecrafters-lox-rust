@@ -10,8 +10,8 @@ use super::Expr;
 /// See the [oxc AST guide](https://oxc.rs/docs/learn/parser_in_rust/ast.html#enum-size).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt<'src> {
-    ExpressionStmt(Box<ExpressionStmt<'src>>),
-    PrintStmt(Box<PrintStmt<'src>>),
+    ExpressionStatement(Box<ExpressionStatement<'src>>),
+    PrintStatement(Box<PrintStatement<'src>>),
 }
 
 impl<'src> Stmt<'src> {
@@ -19,16 +19,16 @@ impl<'src> Stmt<'src> {
     /// and perform operations based on the expression's type.
     pub fn accept<V: StmtVisitor>(&self, visitor: &mut V) -> V::Value {
         match self {
-            Stmt::ExpressionStmt(expr) => visitor.visit_expression_stmt(expr),
-            Stmt::PrintStmt(expr) => visitor.visit_print_stmt(expr),
+            Stmt::ExpressionStatement(expr) => visitor.visit_expression_stmt(expr),
+            Stmt::PrintStatement(expr) => visitor.visit_print_stmt(expr),
         }
     }
 
     /// Gets the [Span] of the current node.
     pub fn span(&self) -> Span {
         match self {
-            Self::ExpressionStmt(e) => e.span,
-            Self::PrintStmt(p) => p.span,
+            Self::ExpressionStatement(e) => e.span,
+            Self::PrintStatement(p) => p.span,
         }
     }
 }
@@ -45,20 +45,20 @@ impl<'src> Stmt<'src> {
 pub trait StmtVisitor {
     type Value;
 
-    fn visit_expression_stmt(&mut self, expr: &ExpressionStmt) -> Self::Value;
-    fn visit_print_stmt(&mut self, expr: &PrintStmt) -> Self::Value;
+    fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value;
+    fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value;
 }
 
 /// Syntax: `<expression>;`
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExpressionStmt<'src> {
+pub struct ExpressionStatement<'src> {
     pub expression: Expr<'src>,
     pub span: Span,
 }
 
 /// Syntax: `print <expression>;`
 #[derive(Debug, Clone, PartialEq)]
-pub struct PrintStmt<'src> {
+pub struct PrintStatement<'src> {
     pub expression: Expr<'src>,
     pub span: Span,
 }

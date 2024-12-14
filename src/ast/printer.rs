@@ -53,11 +53,11 @@ impl AstPrefixPrinter {
 impl StmtVisitor for AstPrefixPrinter {
     type Value = String;
 
-    fn visit_expression_stmt(&mut self, expr: &ExpressionStmt) -> Self::Value {
+    fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value {
         expr.expression.accept(self)
     }
 
-    fn visit_print_stmt(&mut self, expr: &PrintStmt) -> Self::Value {
+    fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value {
         self.parenthesize("print", vec![&expr.expression])
     }
 }

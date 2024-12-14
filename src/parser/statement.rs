@@ -21,8 +21,8 @@ impl<'src> Parser<'src> {
         self.expect(TokenKind::Semicolon)?;
 
         let span = expression.span().expand_right(1);
-        Ok(Stmt::ExpressionStmt(
-            ExpressionStmt { expression, span }.into(),
+        Ok(Stmt::ExpressionStatement(
+            ExpressionStatement { expression, span }.into(),
         ))
     }
 
@@ -34,7 +34,9 @@ impl<'src> Parser<'src> {
         self.expect(TokenKind::Semicolon)?;
 
         let span = self.cur_span().merge(&keyword_span);
-        Ok(Stmt::PrintStmt(PrintStmt { expression, span }.into()))
+        Ok(Stmt::PrintStatement(
+            PrintStatement { expression, span }.into(),
+        ))
     }
 }
 
