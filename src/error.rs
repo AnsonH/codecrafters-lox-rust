@@ -55,7 +55,6 @@ pub enum SyntaxError {
 #[derive(Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum RuntimeError {
     #[error("Invalid assignment target.")]
-    #[diagnostic(help("change the target to a variable name"))]
     InvalidAssignment {
         #[label("cannot assign value to this target")]
         span: Span,

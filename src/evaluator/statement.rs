@@ -64,8 +64,9 @@ mod tests {
 
     #[test]
     fn test_var_statement() {
-        let result = eval("var foo = 10 + 20;");
+        let result = eval("var foo = 10 + 20; var bar;");
         assert_env_val(&result, "foo", &Object::Number(30.0));
+        assert_env_val(&result, "bar", &Object::Nil);
 
         // Assignment
         let result = eval(
