@@ -35,8 +35,22 @@ pub struct Span {
 
 impl Span {
     #[inline]
-    pub const fn new(start: u32, end: u32) -> Self {
+    pub fn new(start: u32, end: u32) -> Self {
         Span { start, end }
+    }
+
+    /// Creates an empty [Span] that starts and ends at an offset byte.
+    ///
+    /// # Example
+    /// ```
+    /// use rust_lox::span::Span;
+    /// let span = Span::empty(2);
+    /// assert!(span.is_empty());
+    /// assert_eq!(span, Span::sized(2, 0));
+    /// ```
+    #[inline]
+    pub fn empty(at: u32) -> Self {
+        Span { start: at, end: at }
     }
 
     /// Creates a new [Span] starting at `start` with length of `size` bytes.
@@ -48,18 +62,56 @@ impl Span {
     /// assert_eq!(span, Span::new(4, 6));
     /// ```
     #[inline]
-    pub const fn sized(start: u32, size: u32) -> Self {
+    pub fn sized(start: u32, size: u32) -> Self {
         Self::new(start, start + size)
     }
 
     #[inline]
-    pub const fn len(&self) -> u32 {
+    pub fn len(&self) -> u32 {
         self.end - self.start
     }
 
     #[inline]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.start == self.end
+    }
+
+    /// Creates a new [Span] that is grown by `offset` in both sides.
+    ///
+    /// The leftmost bound of the span is clamped to 0, so it is safe to have
+    /// `offset` larger than the start position.
+    ///
+    /// # Example
+    /// ```
+    /// use rust_lox::span::Span;
+    /// let span = Span::new(4, 10);
+    /// assert_eq!(span.expand(2), Span::new(2, 12));
+    /// assert_eq!(span.expand(20), Span::new(0, 30));
+    /// ```
+    #[inline]
+    pub fn expand(&self, offset: u32) -> Self {
+        Self::new(
+            // `saturating_sub` clamps to 0 if `self.start - offset < 0`
+            self.start.saturating_sub(offset),
+            self.end.saturating_add(offset),
+        )
+    }
+
+    /// Creates a new [Span] with the end position moved to left by `offset` bytes.
+    ///
+    /// The leftmost bound of the span is clamped to 0, so it is safe to have
+    /// `offset` larger than the start position.
+    ///
+    /// # Example
+    /// ```
+    /// use rust_lox::span::Span;
+    /// let span = Span::new(4, 10);
+    /// assert_eq!(span.expand_left(2), Span::new(2, 10));
+    /// assert_eq!(span.expand_left(20), Span::new(0, 10));
+    /// ```
+    #[inline]
+    pub fn expand_left(&self, offset: u32) -> Self {
+        Self::new(self.start.saturating_sub(offset), self.end)
     }
 
     /// Creates a new [Span] with the end position moved to right by `offset` bytes.
@@ -72,10 +124,12 @@ impl Span {
     /// ```
     #[inline]
     pub fn expand_right(&self, offset: u32) -> Self {
-        Self::new(self.start, self.end + offset)
+        Self::new(self.start, self.end.saturating_add(offset))
     }
 
     /// Create a new [Span] covering the maximum range of two Spans.
+    ///
+    /// It's not necessary for the two spans to overlap.
     ///
     /// # Example
     /// ```

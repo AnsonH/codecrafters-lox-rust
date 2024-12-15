@@ -18,7 +18,9 @@ pub struct Lexer<'src> {
     /// [Peekable] is useful for peeking into future characters without consuming them.
     rest_chars: Peekable<Chars<'src>>,
     /// Current byte position in the input.
-    position: usize,
+    ///
+    /// It uses [u32] because it's also used by [Span].
+    position: u32,
 }
 
 impl<'src> Lexer<'src> {
@@ -32,12 +34,12 @@ impl<'src> Lexer<'src> {
 
     /// Consumes a character and moves the lexer's position forward.
     ///
-    /// Returns an option tuple of the consumed character and its UTF-8 length.
-    fn read_char(&mut self) -> Option<(char, usize)> {
+    /// Returns an option tuple of the consumed character and its span.
+    fn read_char(&mut self) -> Option<(char, Span)> {
         let ch: char = self.rest_chars.next()?;
-        let ch_len = ch.len_utf8();
+        let ch_len = ch.len_utf8() as u32;
         self.position += ch_len;
-        Some((ch, ch_len))
+        Some((ch, Span::empty(self.position).expand_left(ch_len)))
     }
 
     /// Consumes characters while `predicate` returns true.
@@ -48,10 +50,10 @@ impl<'src> Lexer<'src> {
     ///
     /// # Returns
     ///
-    /// A tuple of `(matched_str, total_len)`:
+    /// A tuple with elements:
     /// - `matched_str`: The string slice that satisfies the predicate
-    /// - `total_len`: Total UTF-8 length of the matched string
-    fn read_chars_while<F>(&mut self, predicate: F) -> (&'src str, usize)
+    /// - `span`: [Span] of the matched string
+    fn read_chars_while<F>(&mut self, predicate: F) -> (&'src str, Span)
     where
         F: Fn(char) -> bool,
     {
@@ -65,9 +67,9 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        let matched_str = &self.source[start_pos..self.position];
-        let total_len = self.position - start_pos;
-        (matched_str, total_len)
+        let span = Span::new(start_pos, self.position);
+        let matched_str = &self.source[span];
+        (matched_str, span)
     }
 
     /// Returns true if peeked char equals `expected`.
@@ -105,7 +107,7 @@ impl<'src> Iterator for Lexer<'src> {
     type Item = Result<Token, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.position > self.source.len() {
+        if self.position > self.source.len() as u32 {
             // After EOF token is emitted, we "stop" the iterator by returning `None`.
             // Rust will stop the `for token in lexer {}` loop if `.next()` returns `None`.
             return None;
@@ -113,26 +115,13 @@ impl<'src> Iterator for Lexer<'src> {
 
         loop {
             if self.rest_chars.peek().is_none() {
-                let eof_token = Some(Ok(Token::new(
-                    TokenKind::Eof,
-                    (self.position, self.position).into(),
-                )));
+                let eof_token = Some(Ok(Token::new(TokenKind::Eof, Span::empty(self.position))));
                 self.position += 1;
                 return eof_token;
             }
 
-            let (ch, ch_len) = self.read_char()?;
-            let curr_position = self.position;
-
-            let single_token = |kind: TokenKind| {
-                Some(Ok(Token::new(
-                    kind,
-                    // If we use `self.position` instead of `curr_position`,
-                    // the closure borrows `self` immutably. Then, we cannot call
-                    // `&mut self` methods due to borrow-checker rules.
-                    (curr_position - ch_len, curr_position).into(),
-                )))
-            };
+            let (ch, ch_span) = self.read_char()?;
+            let single_token = |kind: TokenKind| Some(Ok(Token::new(kind, ch_span)));
 
             let started = match ch {
                 '(' => return single_token(TokenKind::LeftParen),
@@ -157,7 +146,7 @@ impl<'src> Iterator for Lexer<'src> {
                 c => {
                     return Some(Err(SyntaxError::SingleTokenError {
                         token: c,
-                        span: (self.position - ch_len, ch_len).into(), // (offset, length)
+                        span: ch_span,
                     }));
                 }
             };
@@ -166,11 +155,9 @@ impl<'src> Iterator for Lexer<'src> {
             break match started {
                 Started::MatchNextChar(to_match, matched, unmatched) => {
                     if self.is_peek_char(to_match) {
-                        let (_, matched_ch_len) = self.read_char()?;
-                        Some(Ok(Token::new(
-                            matched,
-                            (self.position - matched_ch_len - ch_len, self.position).into(),
-                        )))
+                        let (_, matched_ch_span) = self.read_char()?;
+                        let span = matched_ch_span.merge(&ch_span);
+                        Some(Ok(Token::new(matched, span)))
                     } else {
                         single_token(unmatched)
                     }
@@ -185,22 +172,22 @@ impl<'src> Iterator for Lexer<'src> {
                     }
                 }
                 Started::String => {
-                    let (_, str_content_len) = self.read_chars_while(|c| c != '"');
+                    let (_, str_content_span) = self.read_chars_while(|c| c != '"');
 
                     if self.is_peek_char('"') {
                         self.read_char(); // Consume ending `"``
                         Some(Ok(Token::new(
                             TokenKind::String,
-                            (self.position - str_content_len - 2, self.position).into(),
+                            str_content_span.expand(1),
                         )))
                     } else {
                         Some(Err(SyntaxError::UnterminatedStringError {
-                            span: (self.position - str_content_len - 1, str_content_len + 1).into(),
+                            span: str_content_span.expand_left(1),
                         }))
                     }
                 }
                 Started::Number => {
-                    let start_pos = self.position - ch_len; // since first digit is consumed
+                    let start_pos = self.position - ch_span.len(); // since first digit is consumed
 
                     self.read_chars_while(|c| c.is_ascii_digit());
 
@@ -211,15 +198,15 @@ impl<'src> Iterator for Lexer<'src> {
                         self.read_chars_while(|c| c.is_ascii_digit());
                     }
 
-                    let span: Span = (start_pos, self.position).into();
+                    let span = Span::new(start_pos, self.position);
                     Some(Ok(Token::new(TokenKind::Number, span)))
                 }
                 Started::IdentOrKeyword => {
-                    let start_pos = self.position - ch_len; // since first char is consumed
+                    let start_pos = self.position - ch_span.len(); // since first char is consumed
 
                     self.read_chars_while(|c| c.is_ascii_alphanumeric() || c == '_');
 
-                    let span: Span = (start_pos, self.position).into();
+                    let span = Span::new(start_pos, self.position);
                     let word = &self.source[span];
                     let kind = TokenKind::match_keyword(word);
 
@@ -264,26 +251,26 @@ mod tests {
 
         // Consume 'abcd'
         let result = lexer.read_chars_while(|c| c.is_alphabetic());
-        assert_eq!(result, ("abcd", 4));
+        assert_eq!(result, ("abcd", Span::new(0, 4)));
         assert_eq!(lexer.rest_chars.peek(), Some(&'1'));
         assert_eq!(lexer.position, 4);
 
         // Predicate returns false immediately -> No-op
         let result = lexer.read_chars_while(|c| c.is_alphabetic());
-        assert_eq!(result, ("", 0));
+        assert_eq!(result, ("", Span::empty(4)));
         assert_eq!(lexer.rest_chars.peek(), Some(&'1'));
         assert_eq!(lexer.position, 4);
 
         // Consume '123'
         let result = lexer.read_chars_while(|c| c.is_numeric());
-        assert_eq!(result, ("123", 3));
+        assert_eq!(result, ("123", Span::new(4, 7)));
         assert_eq!(lexer.rest_chars.peek(), None);
         assert_eq!(lexer.position, 7);
 
         // Next token is EOF
         assert_eq!(
             lexer.next(),
-            Some(Ok(Token::new(TokenKind::Eof, (7, 7).into(),)))
+            Some(Ok(Token::new(TokenKind::Eof, Span::empty(7))))
         );
         assert!(lexer.next().is_none());
     }
@@ -558,7 +545,7 @@ mod tests {
             lexer.next(),
             &SyntaxError::SingleTokenError {
                 token: '$',
-                span: (2, 1).into(), // (offset, length)
+                span: Span::new(2, 3),
             },
         );
         assert_eq!(lexer.next().unwrap().unwrap().kind, TokenKind::LeftParen);
@@ -573,7 +560,7 @@ mod tests {
         assert_syntax_error(
             lexer.next(),
             &SyntaxError::UnterminatedStringError {
-                span: (1, 4).into(),
+                span: Span::new(1, 5),
             },
         )
     }
