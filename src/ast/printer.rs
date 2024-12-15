@@ -62,7 +62,7 @@ impl StmtVisitor for AstPrefixPrinter {
     }
 
     fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value {
-        let mut output = format!("(var {}", expr.name.name);
+        let mut output = format!("(var {}", expr.ident.name);
         if let Some(initializer) = &expr.initializer {
             output.push(' ');
             output.push_str(&initializer.accept(self));

@@ -59,7 +59,8 @@ impl ExprVisitor for Evaluator {
     }
 
     fn visit_identifier_expr(&mut self, expr: &Identifier) -> Self::Value {
-        todo!()
+        let value = self.env.borrow().get(expr)?.clone();
+        Ok(value)
     }
 
     fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> Self::Value {
@@ -103,7 +104,7 @@ mod tests {
                 report.with_source_code(input)
             )
         });
-        let mut evaluator = Evaluator;
+        let mut evaluator = Evaluator::default();
         evaluator.evaluate_expression(&expr)
     }
 

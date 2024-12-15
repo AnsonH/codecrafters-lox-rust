@@ -71,6 +71,13 @@ pub enum RuntimeError {
         #[label("this operand")]
         span: Span,
     },
+
+    #[error("Undefined variable '{name}'.")]
+    UndefinedVariable {
+        name: String,
+        #[label("this variable")]
+        span: Span,
+    },
 }
 
 impl SyntaxError {

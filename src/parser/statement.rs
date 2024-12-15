@@ -66,7 +66,7 @@ impl<'src> Parser<'src> {
 
         Ok(Stmt::VarStatement(
             VarStatement {
-                name: *name,
+                ident: *name,
                 initializer,
                 span: self.cur_span().merge(&var_keyword_span),
             }

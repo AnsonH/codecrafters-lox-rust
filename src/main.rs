@@ -128,7 +128,7 @@ fn main() -> Result<()> {
                 }
             };
 
-            let mut evaluator = Evaluator;
+            let mut evaluator = Evaluator::default();
             match evaluator.evaluate_expression(&expr) {
                 Ok(obj) => println!("{obj}"),
                 Err(report) => {
@@ -149,7 +149,7 @@ fn main() -> Result<()> {
                 }
             };
 
-            let mut evaluator = Evaluator;
+            let mut evaluator = Evaluator::default();
             if let Err(report) = evaluator.evaluate_program(&program) {
                 eprintln!("{:?}", report.with_source_code(source));
                 std::process::exit(ExitCode::RuntimeError as i32);

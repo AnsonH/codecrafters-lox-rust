@@ -72,7 +72,7 @@ pub struct PrintStatement<'src> {
 /// - `var <name> = <expression>;`
 #[derive(Debug, Clone, PartialEq)]
 pub struct VarStatement<'src> {
-    pub name: Identifier<'src>,
+    pub ident: Identifier<'src>,
     pub initializer: Option<Expr<'src>>,
     pub span: Span,
 }

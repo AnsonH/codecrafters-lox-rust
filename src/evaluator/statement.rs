@@ -2,7 +2,7 @@ use miette::Result;
 
 use crate::ast::statement::*;
 
-use super::Evaluator;
+use super::{object::Object, Evaluator};
 
 impl StmtVisitor for Evaluator {
     type Value = Result<()>;
@@ -18,6 +18,12 @@ impl StmtVisitor for Evaluator {
     }
 
     fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value {
-        todo!()
+        let value = expr
+            .initializer
+            .as_ref()
+            .map_or(Ok(Object::Nil), |expr| expr.accept(self))?;
+
+        self.env.borrow_mut().define(expr.ident.name.into(), value);
+        Ok(())
     }
 }
