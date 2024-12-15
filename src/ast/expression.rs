@@ -10,6 +10,7 @@ use super::{BinaryOperator, UnaryOperator};
 /// See the [oxc AST guide](https://oxc.rs/docs/learn/parser_in_rust/ast.html#enum-size).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'src> {
+    Assignment(Box<Assignment<'src>>),
     Binary(Box<Binary<'src>>),
     Grouping(Box<Grouping<'src>>),
     Identifier(Box<Identifier<'src>>),
@@ -22,6 +23,7 @@ impl<'src> Expr<'src> {
     /// and perform operations based on the expression's type.
     pub fn accept<V: ExprVisitor>(&self, visitor: &mut V) -> V::Value {
         match self {
+            Expr::Assignment(expr) => visitor.visit_assignment_expr(expr),
             Expr::Binary(expr) => visitor.visit_binary_expr(expr),
             Expr::Grouping(expr) => visitor.visit_grouping_expr(expr),
             Expr::Identifier(expr) => visitor.visit_identifier_expr(expr),
@@ -34,11 +36,12 @@ impl<'src> Expr<'src> {
     pub fn span(&self) -> Span {
         // Yes this looks tedious since we cannot inherit structs in Rust
         match self {
-            Expr::Binary(b) => b.span,
-            Expr::Grouping(g) => g.span,
-            Expr::Identifier(i) => i.span,
-            Expr::Literal(l) => l.span,
-            Expr::Unary(u) => u.span,
+            Expr::Assignment(e) => e.span,
+            Expr::Binary(e) => e.span,
+            Expr::Grouping(e) => e.span,
+            Expr::Identifier(e) => e.span,
+            Expr::Literal(e) => e.span,
+            Expr::Unary(e) => e.span,
         }
     }
 }
@@ -55,11 +58,20 @@ impl<'src> Expr<'src> {
 pub trait ExprVisitor {
     type Value;
 
+    fn visit_assignment_expr(&mut self, expr: &Assignment) -> Self::Value;
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value;
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value;
     fn visit_identifier_expr(&mut self, expr: &Identifier) -> Self::Value;
     fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> Self::Value;
     fn visit_unary_expr(&mut self, expr: &Unary) -> Self::Value;
+}
+
+/// Assignment expression (e.g. `foo = 10`)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assignment<'src> {
+    pub left: Expr<'src>,
+    pub right: Expr<'src>,
+    pub span: Span,
 }
 
 /// Binary expression (e.g. `1 + 2`)

@@ -75,6 +75,10 @@ impl StmtVisitor for AstPrefixPrinter {
 impl ExprVisitor for AstPrefixPrinter {
     type Value = String;
 
+    fn visit_assignment_expr(&mut self, expr: &Assignment) -> Self::Value {
+        self.parenthesize("assign", vec![&expr.left, &expr.right])
+    }
+
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
         self.parenthesize(&expr.operator.to_string(), vec![&expr.left, &expr.right])
     }

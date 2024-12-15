@@ -1,10 +1,7 @@
 use miette::Result;
 
 use crate::{
-    ast::{
-        expression::{Binary, ExprVisitor, Grouping, Identifier, LiteralExpr, Unary},
-        BinaryOperator, UnaryOperator,
-    },
+    ast::{expression::*, BinaryOperator, UnaryOperator},
     error::RuntimeError,
 };
 
@@ -12,6 +9,23 @@ use super::{object::Object, Evaluator};
 
 impl ExprVisitor for Evaluator {
     type Value = Result<Object>;
+
+    fn visit_assignment_expr(&mut self, expr: &Assignment) -> Self::Value {
+        if let Expr::Identifier(ident) = &expr.left {
+            let value = expr.right.accept(self)?;
+
+            let mut env = self.env.borrow_mut();
+            env.get(ident)?; // Checks if variable is defined
+            env.define(ident.name.to_string(), value.clone());
+
+            Ok(value)
+        } else {
+            Err(RuntimeError::InvalidAssignment {
+                span: expr.left.span(),
+            }
+            .into())
+        }
+    }
 
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
         use BinaryOperator::*;
@@ -253,6 +267,17 @@ mod tests {
             "false > true",
             &InfixNonNumberOperandsError {
                 span: Span::new(0, 12),
+            },
+        );
+    }
+
+    #[test]
+    fn test_assignment() {
+        assert_error(
+            "x = 1",
+            &UndefinedVariable {
+                name: "x".into(),
+                span: Span::new(0, 1),
             },
         );
     }

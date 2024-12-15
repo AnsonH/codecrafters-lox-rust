@@ -81,15 +81,18 @@ impl<'src> Parser<'src> {
         let right = self.parse_expr(rhs_prec)?;
 
         let span = self.cur_span().merge(&left.span());
-        Ok(Expr::Binary(
-            Binary {
-                left,
-                operator: BinaryOperator::from(op_kind),
-                right,
-                span,
-            }
-            .into(),
-        ))
+        match op_kind {
+            TokenKind::Equal => Ok(Expr::Assignment(Assignment { left, right, span }.into())),
+            _ => Ok(Expr::Binary(
+                Binary {
+                    left,
+                    operator: BinaryOperator::from(op_kind),
+                    right,
+                    span,
+                }
+                .into(),
+            )),
+        }
     }
 
     pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
@@ -264,6 +267,21 @@ mod tests {
         assert(
             "1 < 2 + 3 != 4 * 5 < 6 + 7",
             "(!= (< 1.0 (+ 2.0 3.0)) (< (* 4.0 5.0) (+ 6.0 7.0)))",
+        );
+    }
+
+    #[test]
+    fn test_assignment() {
+        assert("a = 1", "(assign a 1.0)");
+        assert("a = b = c", "(assign a (assign b c))");
+        assert("a = b + c = d", "(assign a (assign (+ b c) d))");
+        assert("(a = b) = c", "(assign (group (assign a b)) c)");
+
+        assert_error(
+            "a =",
+            SyntaxError::MissingExpression {
+                span: Span::new(3, 3),
+            },
         );
     }
 

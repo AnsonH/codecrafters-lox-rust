@@ -54,6 +54,13 @@ pub enum SyntaxError {
 /// Runtime errors during evaluation.
 #[derive(Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum RuntimeError {
+    #[error("Invalid assignment target.")]
+    #[diagnostic(help("change the target to a variable name"))]
+    InvalidAssignment {
+        #[label("cannot assign value to this target")]
+        span: Span,
+    },
+
     #[error("Operands must be numbers.")]
     InfixNonNumberOperandsError {
         #[label("this expression")]

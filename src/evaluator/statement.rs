@@ -27,3 +27,56 @@ impl StmtVisitor for Evaluator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{ast::expression::Identifier, parser::Parser};
+
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn eval(input: &'static str) -> Result<Evaluator> {
+        let parser = Parser::new(input);
+        let program = parser.parse_program().unwrap_or_else(|report| {
+            panic!(
+                "Encountered error while parsing\n{:?}",
+                report.with_source_code(input)
+            )
+        });
+        let mut evaluator = Evaluator::default();
+        evaluator.evaluate_program(&program)?;
+        Ok(evaluator)
+    }
+
+    /// Asserts the value of a variable in the environment.
+    fn assert_env_val(result: &Result<Evaluator>, ident: &str, expected: &Object) {
+        // Create dummy `Identifier` since `Environment::get()` accepts `&Identifier`
+        let ident = Identifier {
+            name: ident,
+            span: (0, 0).into(),
+        };
+        let env = result.as_ref().expect("no RuntimeError").env.borrow();
+        match env.get(&ident) {
+            Ok(actual) => assert_eq!(expected, actual),
+            Err(err) => panic!("Encountered error\n{:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_var_statement() {
+        let result = eval("var foo = 10 + 20;");
+        assert_env_val(&result, "foo", &Object::Number(30.0));
+
+        // Assignment
+        let result = eval(
+            "
+            var a = 10;
+            var b = 20;
+            var c = 30;
+            a = b = c + 1;",
+        );
+        assert_env_val(&result, "a", &Object::Number(31.0));
+        assert_env_val(&result, "b", &Object::Number(31.0));
+        assert_env_val(&result, "c", &Object::Number(30.0));
+    }
+}

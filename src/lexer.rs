@@ -127,7 +127,7 @@ impl<'src> Iterator for Lexer<'src> {
             let single_token = |kind: TokenKind| {
                 Some(Ok(Token::new(
                     kind,
-                    // If we use `curr_position` instead of `self.position`,
+                    // If we use `self.position` instead of `curr_position`,
                     // the closure borrows `self` immutably. Then, we cannot call
                     // `&mut self` methods due to borrow-checker rules.
                     (curr_position - ch_len, curr_position).into(),

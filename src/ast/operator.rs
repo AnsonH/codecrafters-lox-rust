@@ -53,7 +53,7 @@ impl From<TokenKind> for BinaryOperator {
 // TODO: Replace with enum
 pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
     match op {
-        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 9),
+        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 11),
     }
 }
 
@@ -64,13 +64,13 @@ pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
 ///
 /// Returning `None` means the token kind is not an infix operator.
 pub(crate) fn infix_precedence(kind: TokenKind) -> Option<(u8, u8)> {
+    use TokenKind::*;
     match kind {
-        TokenKind::EqualEqual | TokenKind::BangEqual => Some((1, 2)),
-        TokenKind::Greater | TokenKind::GreaterEqual | TokenKind::Less | TokenKind::LessEqual => {
-            Some((3, 4))
-        }
-        TokenKind::Plus | TokenKind::Minus => Some((5, 6)),
-        TokenKind::Star | TokenKind::Slash => Some((7, 8)),
+        Equal => Some((2, 1)),
+        EqualEqual | BangEqual => Some((3, 4)),
+        Greater | GreaterEqual | Less | LessEqual => Some((5, 6)),
+        Plus | Minus => Some((7, 8)),
+        Star | Slash => Some((9, 10)),
         _ => None,
     }
 }
