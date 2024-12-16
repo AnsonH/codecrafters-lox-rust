@@ -11,7 +11,7 @@ use environment::Environment;
 use miette::Result;
 use object::Object;
 
-use crate::ast::{Expr, Program};
+use crate::ast::{Expr, Program, Stmt};
 
 pub struct Evaluator {
     env: Rc<RefCell<Environment>>,
@@ -35,6 +35,24 @@ impl Evaluator {
     /// Entry point to evaluate an expression.
     pub fn evaluate_expression(&mut self, expr: &Expr) -> Result<Object> {
         expr.accept(self)
+    }
+
+    /// Executes a block of statements under a new [Environment] of `env_new`.
+    ///
+    /// If evaluating a statement has `Err`, the block evaluation early exits and
+    /// returns with that `Err`.
+    fn execute_block(
+        &mut self,
+        statements: &[Stmt],
+        env_new: Rc<RefCell<Environment>>,
+    ) -> Result<()> {
+        let env_previous = Rc::clone(&self.env);
+
+        self.env = env_new; // Temporarily set to new environment
+        let result = statements.iter().try_for_each(|stmt| stmt.accept(self));
+        self.env = env_previous; // Restore back to old environment
+
+        result
     }
 }
 

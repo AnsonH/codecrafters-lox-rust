@@ -1,11 +1,19 @@
+use std::{cell::RefCell, rc::Rc};
+
 use miette::Result;
 
 use crate::ast::statement::*;
 
-use super::{object::Object, Evaluator};
+use super::{environment::Environment, object::Object, Evaluator};
 
 impl StmtVisitor for Evaluator {
     type Value = Result<()>;
+
+    fn visit_block_stmt(&mut self, expr: &BlockStatement) -> Self::Value {
+        let env = Environment::from(&self.env);
+        self.execute_block(&expr.statements, Rc::new(RefCell::new(env)))?;
+        Ok(())
+    }
 
     fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value {
         expr.expression.accept(self)?;
@@ -57,7 +65,7 @@ mod tests {
         };
         let env = result.as_ref().expect("no RuntimeError").env.borrow();
         match env.get(&ident) {
-            Ok(actual) => assert_eq!(expected, actual),
+            Ok(actual) => assert_eq!(*expected, actual),
             Err(err) => panic!("Encountered error\n{:?}", err),
         }
     }
@@ -80,4 +88,6 @@ mod tests {
         assert_env_val(&result, "b", &Object::Number(31.0));
         assert_env_val(&result, "c", &Object::Number(30.0));
     }
+
+    // TODO: Add tests for block statements
 }

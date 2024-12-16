@@ -11,20 +11,18 @@ impl ExprVisitor for Evaluator {
     type Value = Result<Object>;
 
     fn visit_assignment_expr(&mut self, expr: &Assignment) -> Self::Value {
-        if let Expr::Identifier(ident) = &expr.left {
-            let value = expr.right.accept(self)?;
-
-            let mut env = self.env.borrow_mut();
-            env.get(ident)?; // Checks if variable is defined
-            env.define(ident.name.to_string(), value.clone());
-
-            Ok(value)
-        } else {
-            Err(RuntimeError::InvalidAssignment {
+        let Expr::Identifier(ident) = &expr.left else {
+            return Err(RuntimeError::InvalidAssignment {
                 span: expr.left.span(),
             }
-            .into())
-        }
+            .into());
+        };
+        let value = expr.right.accept(self)?;
+
+        let mut env = self.env.borrow_mut();
+        env.assign(ident, value.clone())?;
+
+        Ok(value)
     }
 
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
@@ -49,6 +47,7 @@ impl ExprVisitor for Evaluator {
             }
         }
 
+        // Number-only operations
         if !matches!((&left, &right), (Object::Number(_), Object::Number(_))) {
             return Err(RuntimeError::InfixNonNumberOperandsError { span: expr.span }.into());
         }

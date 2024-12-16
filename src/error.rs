@@ -36,6 +36,12 @@ pub enum SyntaxError {
         span: Span,
     },
 
+    #[error("Expect '}}' after block.")]
+    UnclosedBlock {
+        #[label("this block is unclosed")]
+        span: Span,
+    },
+
     #[error("Expected `{expected}` but found `{actual}`")]
     UnexpectedToken {
         expected: String,
@@ -115,6 +121,7 @@ impl SyntaxError {
             Self::MissingExpression { span, .. } => *span,
             Self::MissingVariableName { span, .. } => *span,
             Self::SingleTokenError { span, .. } => *span,
+            Self::UnclosedBlock { span, .. } => *span,
             Self::UnexpectedToken { span, .. } => *span,
             Self::UnterminatedStringError { span, .. } => *span,
         }

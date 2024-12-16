@@ -12,10 +12,33 @@ impl<'src> Parser<'src> {
     /// Entry point for parsing a statement.
     pub(crate) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
+            TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::Print => self.parse_print_statement(),
             TokenKind::Var => self.parse_var_statement(),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    pub(crate) fn parse_block_statement(&mut self) -> Result<Stmt<'src>> {
+        let mut statements: Vec<Stmt<'src>> = vec![];
+        let left_brace_span = self.cur_span();
+
+        self.advance()?;
+        while !matches!(self.cur_kind(), TokenKind::RightBrace | TokenKind::Eof) {
+            statements.push(self.parse_statement()?);
+            self.advance()?;
+        }
+        if !self.is_cur_kind(TokenKind::RightBrace) {
+            return Err(SyntaxError::UnclosedBlock {
+                span: left_brace_span,
+            }
+            .into());
+        }
+
+        let span = self.cur_span().merge(&left_brace_span);
+        Ok(Stmt::BlockStatement(
+            BlockStatement { statements, span }.into(),
+        ))
     }
 
     pub(crate) fn parse_expression_statement(&mut self) -> Result<Stmt<'src>> {
@@ -160,6 +183,32 @@ mod tests {
                 expected: ";".into(),
                 actual: "EOF".into(),
                 span: Span::new(11, 11),
+            },
+        );
+    }
+
+    #[test]
+    fn test_block_statement() {
+        assert(
+            r"
+            var a = 1;
+            { var a = 1; var b = 2; }
+            var c = 3;",
+            &[
+                "(var a 1.0)",
+                "(begin (var a 1.0) (var b 2.0))",
+                "(var c 3.0)",
+            ],
+        );
+        assert(
+            r"{{ var a = 1; }} var b = 2;",
+            &["(begin (begin (var a 1.0)))", "(var b 2.0)"],
+        );
+
+        assert_error(
+            r"{ var a = 1;",
+            SyntaxError::UnclosedBlock {
+                span: Span::new(0, 1),
             },
         );
     }

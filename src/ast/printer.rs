@@ -38,6 +38,7 @@ impl AstPrefixPrinter {
         expr.accept(self)
     }
 
+    // TODO: Make this generic by making `Expr` and `Stmt` impl a trait with `accept()`
     fn parenthesize(&mut self, name: &str, exprs: Vec<&Expr>) -> String {
         let mut output = String::from("(");
         output.push_str(name);
@@ -52,6 +53,16 @@ impl AstPrefixPrinter {
 
 impl StmtVisitor for AstPrefixPrinter {
     type Value = String;
+
+    fn visit_block_stmt(&mut self, expr: &BlockStatement) -> Self::Value {
+        let mut output = String::from("(begin");
+        for stmt in &expr.statements {
+            output.push(' ');
+            output.push_str(&stmt.accept(self));
+        }
+        output.push(')');
+        output
+    }
 
     fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value {
         expr.expression.accept(self)
