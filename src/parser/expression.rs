@@ -286,6 +286,19 @@ mod tests {
     }
 
     #[test]
+    fn test_logical_operators() {
+        assert("true or false", "(or true false)");
+        assert("true and false", "(and true false)");
+        assert("false and true or true", "(or (and false true) true)");
+        assert("false or x = true", "(or false (assign x true))");
+        assert("true and x = false", "(and true (assign x false))");
+        assert(
+            "1 + 2 and 3 or 4 - 5",
+            "(or (and (+ 1.0 2.0) 3.0) (- 4.0 5.0))",
+        );
+    }
+
+    #[test]
     fn test_span() {
         let input = r#"  1 + (23)"#;
         let parser = Parser::new(input);

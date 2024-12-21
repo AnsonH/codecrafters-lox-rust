@@ -30,6 +30,10 @@ pub enum BinaryOperator {
     Equal,
     #[strum(to_string = "!=")]
     NotEqual,
+    #[strum(to_string = "or")]
+    LogicalOr,
+    #[strum(to_string = "and")]
+    LogicalAnd,
 }
 
 impl From<TokenKind> for BinaryOperator {
@@ -45,6 +49,8 @@ impl From<TokenKind> for BinaryOperator {
             TokenKind::LessEqual => BinaryOperator::LessEqualThan,
             TokenKind::EqualEqual => BinaryOperator::Equal,
             TokenKind::BangEqual => BinaryOperator::NotEqual,
+            TokenKind::Or => BinaryOperator::LogicalOr,
+            TokenKind::And => BinaryOperator::LogicalAnd,
             _ => unreachable!("Expected binary operator, got {kind}"),
         }
     }
@@ -53,7 +59,7 @@ impl From<TokenKind> for BinaryOperator {
 // TODO: Replace with enum
 pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
     match op {
-        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 11),
+        UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 15),
     }
 }
 
@@ -66,11 +72,13 @@ pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
 pub(crate) fn infix_precedence(kind: TokenKind) -> Option<(u8, u8)> {
     use TokenKind::*;
     match kind {
-        Equal => Some((2, 1)),
-        EqualEqual | BangEqual => Some((3, 4)),
-        Greater | GreaterEqual | Less | LessEqual => Some((5, 6)),
-        Plus | Minus => Some((7, 8)),
-        Star | Slash => Some((9, 10)),
+        Or => Some((1, 2)),
+        And => Some((3, 4)),
+        Equal => Some((6, 5)),
+        EqualEqual | BangEqual => Some((7, 8)),
+        Greater | GreaterEqual | Less | LessEqual => Some((8, 9)),
+        Plus | Minus => Some((10, 11)),
+        Star | Slash => Some((12, 13)),
         _ => None,
     }
 }

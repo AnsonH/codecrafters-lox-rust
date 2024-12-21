@@ -28,7 +28,17 @@ impl ExprVisitor for Evaluator {
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
         use BinaryOperator::*;
 
+        // Note: Don't evaluate R.H.S. yet since logical operators may short-circuit
         let left = expr.left.accept(self)?;
+
+        if matches!(expr.operator, LogicalOr | LogicalAnd) {
+            let is_left_truthy = left.is_truthy();
+            return match (expr.operator, is_left_truthy) {
+                (LogicalOr, true) | (LogicalAnd, false) => Ok(left),
+                _ => Ok(expr.right.accept(self)?),
+            };
+        }
+
         let right = expr.right.accept(self)?;
 
         match expr.operator {
@@ -61,7 +71,7 @@ impl ExprVisitor for Evaluator {
             GreaterEqualThan => Ok(Object::Boolean(left >= right)),
             LessThan => Ok(Object::Boolean(left < right)),
             LessEqualThan => Ok(Object::Boolean(left <= right)),
-            Add | Equal | NotEqual => {
+            Add | Equal | NotEqual | LogicalOr | LogicalAnd => {
                 unreachable!("handled above")
             }
         }
@@ -279,5 +289,27 @@ mod tests {
                 span: Span::new(0, 1),
             },
         );
+    }
+
+    #[test]
+    fn test_logical_operators() {
+        // Truth tables
+        assert("true or true", &Boolean(true));
+        assert("true or false", &Boolean(true));
+        assert("false or true", &Boolean(true));
+        assert("false or false", &Boolean(false));
+
+        assert("true and true", &Boolean(true));
+        assert("true and false", &Boolean(false));
+        assert("false and true", &Boolean(false));
+        assert("false and false", &Boolean(false));
+
+        // Operator precedence
+        assert("false and true or true", &Boolean(true));
+        assert("false and (true or true)", &Boolean(false));
+
+        // Non-boolean expressions
+        assert("41 or true", &Number(41.0));
+        assert(r#"24 and (nil or "hi")"#, &String("hi".into()));
     }
 }

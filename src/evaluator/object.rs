@@ -15,6 +15,7 @@ pub enum Object {
 }
 
 impl Object {
+    #[inline]
     pub(crate) fn is_truthy(&self) -> bool {
         !matches!(self, Object::Boolean(false) | Object::Nil)
     }
