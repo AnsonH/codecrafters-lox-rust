@@ -17,7 +17,7 @@ pub enum Stmt<'src> {
     VarStatement(Box<VarStatement<'src>>),
 }
 
-impl<'src> Stmt<'src> {
+impl Stmt<'_> {
     /// Accepts a visitor implementing [StmtVisitor] to visit the expression
     /// and perform operations based on the expression's type.
     pub fn accept<V: StmtVisitor>(&self, visitor: &mut V) -> V::Value {

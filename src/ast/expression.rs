@@ -18,7 +18,7 @@ pub enum Expr<'src> {
     Unary(Box<Unary<'src>>),
 }
 
-impl<'src> Expr<'src> {
+impl Expr<'_> {
     /// Accepts a visitor implementing [ExprVisitor] to visit the expression
     /// and perform operations based on the expression's type.
     pub fn accept<V: ExprVisitor>(&self, visitor: &mut V) -> V::Value {

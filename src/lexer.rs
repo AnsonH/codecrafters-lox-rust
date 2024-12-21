@@ -103,7 +103,7 @@ enum Started {
     IdentOrKeyword,
 }
 
-impl<'src> Iterator for Lexer<'src> {
+impl Iterator for Lexer<'_> {
     type Item = Result<Token, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
