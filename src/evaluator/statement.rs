@@ -21,7 +21,12 @@ impl StmtVisitor for Evaluator {
     }
 
     fn visit_if_stmt(&mut self, expr: &IfStatement) -> Self::Value {
-        todo!()
+        if expr.condition.accept(self)?.is_truthy() {
+            expr.then_branch.accept(self)?;
+        } else if let Some(else_branch) = &expr.else_branch {
+            else_branch.accept(self)?;
+        }
+        Ok(())
     }
 
     fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value {
