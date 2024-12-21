@@ -9,8 +9,7 @@ use crate::{
 use super::Parser;
 
 impl<'src> Parser<'src> {
-    // TODO: Change all to `pub(super)`
-    pub(crate) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
             TokenKind::If => self.parse_if_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
@@ -20,31 +19,29 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub(crate) fn parse_block_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_block_statement(&mut self) -> Result<Stmt<'src>> {
         let mut statements: Vec<Stmt<'src>> = vec![];
-        let left_brace_span = self.cur_span();
 
-        self.advance()?;
+        let start_span = self.cur_span();
+        self.consume(TokenKind::LeftBrace)?;
+
         while !matches!(self.cur_kind(), TokenKind::RightBrace | TokenKind::Eof) {
             statements.push(self.parse_statement()?);
             self.advance()?;
         }
         if !self.is_cur_kind(TokenKind::RightBrace) {
-            return Err(SyntaxError::UnclosedBlock {
-                span: left_brace_span,
-            }
-            .into());
+            return Err(SyntaxError::UnclosedBlock { span: start_span }.into());
         }
 
-        let span = self.cur_span().merge(&left_brace_span);
+        let span = self.cur_span().merge(&start_span);
         Ok(Stmt::BlockStatement(
             BlockStatement { statements, span }.into(),
         ))
     }
 
-    pub(crate) fn parse_expression_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_expression_statement(&mut self) -> Result<Stmt<'src>> {
         let expression = self.parse_expr(0)?;
-        self.expect(TokenKind::Semicolon)?;
+        self.expect_peek(TokenKind::Semicolon)?;
 
         let span = expression.span().expand_right(1);
         Ok(Stmt::ExpressionStatement(
@@ -52,19 +49,17 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(crate) fn parse_if_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_if_statement(&mut self) -> Result<Stmt<'src>> {
         let start_span = self.cur_span();
-        self.advance()?;
 
-        self.expect_cur(TokenKind::LeftParen)?;
+        self.consume(TokenKind::If)?;
+        self.consume(TokenKind::LeftParen)?;
         let condition = self.parse_expr(0)?;
         self.advance()?;
-        self.expect_cur(TokenKind::RightParen)?;
+        self.consume(TokenKind::RightParen)?;
 
         let then_branch = self.parse_statement()?;
-        let else_branch = if self.is_peek_kind(TokenKind::Else) {
-            self.advance()?; // Move to `else`
-            self.advance()?; // Move to first token of else branch
+        let else_branch = if self.try_consume_peek(TokenKind::Else)? {
             Some(self.parse_statement()?)
         } else {
             None
@@ -82,22 +77,22 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(crate) fn parse_print_statement(&mut self) -> Result<Stmt<'src>> {
-        let print_keyword_span = self.cur_span();
-        self.advance()?;
+    pub(super) fn parse_print_statement(&mut self) -> Result<Stmt<'src>> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::Print)?;
 
         let expression = self.parse_expr(0)?;
-        self.expect(TokenKind::Semicolon)?;
+        self.expect_peek(TokenKind::Semicolon)?;
 
-        let span = self.cur_span().merge(&print_keyword_span);
+        let span = self.cur_span().merge(&start_span);
         Ok(Stmt::PrintStatement(
             PrintStatement { expression, span }.into(),
         ))
     }
 
-    pub(crate) fn parse_var_statement(&mut self) -> Result<Stmt<'src>> {
-        let var_keyword_span = self.cur_span();
-        self.advance()?;
+    pub(super) fn parse_var_statement(&mut self) -> Result<Stmt<'src>> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::Var)?;
 
         if !self.is_cur_kind(TokenKind::Identifier) {
             return Err(SyntaxError::MissingVariableName {
@@ -109,16 +104,14 @@ impl<'src> Parser<'src> {
             unreachable!()
         };
 
-        let initializer = if self.is_peek_kind(TokenKind::Equal) {
-            self.advance()?; // Move to `=`
-            self.advance()?; // Move to start of expression
+        let initializer = if self.try_consume_peek(TokenKind::Equal)? {
             Some(self.parse_expr(0)?)
         } else {
             None
         };
-        self.expect(TokenKind::Semicolon)?;
+        self.expect_peek(TokenKind::Semicolon)?;
 
-        let span = self.cur_span().merge(&var_keyword_span);
+        let span = self.cur_span().merge(&start_span);
         Ok(Stmt::VarStatement(
             VarStatement {
                 ident: *name,

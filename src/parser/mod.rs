@@ -74,32 +74,43 @@ impl<'src> Parser<'src> {
 
     /// Get current token's kind.
     #[inline]
-    pub(crate) fn cur_kind(&self) -> TokenKind {
+    fn cur_kind(&self) -> TokenKind {
         self.token.kind
     }
 
     /// Get current token.
     #[inline]
-    pub(crate) fn cur_token(&self) -> Token {
+    fn cur_token(&self) -> Token {
         self.token
     }
 
     /// Get current token's span.
     #[inline]
-    pub(crate) fn cur_span(&self) -> Span {
+    fn cur_span(&self) -> Span {
         self.token.span
     }
 
     /// Get current token's source text.
     #[inline]
-    pub(crate) fn cur_src(&self) -> &'src str {
+    fn cur_src(&self) -> &'src str {
         // Safety: the lexer ensures that the span is not out of range
         &self.source[self.cur_token().span]
     }
 
+    /// Whether the current token is a certain [TokenKind].
+    #[inline]
+    fn is_cur_kind(&self, kind: TokenKind) -> bool {
+        self.token.kind == kind
+    }
+
+    /// Whether the peek token is a certain [TokenKind].
+    fn is_peek_kind(&mut self, kind: TokenKind) -> bool {
+        matches!(self.lexer.peek(), Some(Ok(Token { kind: k, .. })) if *k == kind)
+    }
+
     // TODO: Change return type to `miette::Result<()>`
     /// Advance to the next token.
-    pub(crate) fn advance(&mut self) -> Result<(), SyntaxError> {
+    fn advance(&mut self) -> Result<(), SyntaxError> {
         if let Some(result) = self.lexer.next() {
             self.token = result?;
         }
@@ -108,7 +119,7 @@ impl<'src> Parser<'src> {
 
     /// If current token kind is `expected`, advances to next token. Otherwise
     /// return unexpected token error.
-    pub(crate) fn expect_cur(&mut self, expected: TokenKind) -> miette::Result<()> {
+    fn consume(&mut self, expected: TokenKind) -> miette::Result<()> {
         if self.is_cur_kind(expected) {
             self.advance()?;
             Ok(())
@@ -122,10 +133,9 @@ impl<'src> Parser<'src> {
         }
     }
 
-    // TODO: Rename to `expect_peek`
     /// If peek token kind is `expected`, advance to that token. Otherwise return
     /// unexpected token error.
-    pub(crate) fn expect(&mut self, expected: TokenKind) -> miette::Result<()> {
+    fn expect_peek(&mut self, expected: TokenKind) -> miette::Result<()> {
         match self.lexer.peek() {
             Some(Ok(token)) => {
                 if token.kind == expected {
@@ -154,14 +164,39 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// Whether the current token is a certain [TokenKind].
-    #[inline]
-    pub(crate) fn is_cur_kind(&self, kind: TokenKind) -> bool {
-        self.token.kind == kind
+    /// If peek token kind is `expected`, consumes that token so that current
+    /// token position is one token after the `expected` token. Otherwise, it's
+    /// a no-op.
+    fn try_consume_peek(&mut self, expected: TokenKind) -> miette::Result<bool> {
+        if self.is_peek_kind(expected) {
+            self.advance()?; // Move to peek token
+            self.consume(expected)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
+}
 
-    /// Whether the peek token is a certain [TokenKind].
-    pub(crate) fn is_peek_kind(&mut self, kind: TokenKind) -> bool {
-        matches!(self.lexer.peek(), Some(Ok(Token { kind: k, .. })) if *k == kind)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_try_consume_peek() -> miette::Result<()> {
+        let input = "+-*";
+        let mut parser = Parser::new(input);
+        parser.advance()?; // Move to `+`
+
+        let is_consumed = parser.try_consume_peek(TokenKind::Bang)?;
+        assert_eq!(is_consumed, false);
+        assert_eq!(parser.token.kind, TokenKind::Plus);
+
+        let is_consumed = parser.try_consume_peek(TokenKind::Minus)?;
+        assert_eq!(is_consumed, true);
+        assert_eq!(parser.token.kind, TokenKind::Star);
+
+        Ok(())
     }
 }

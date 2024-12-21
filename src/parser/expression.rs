@@ -13,7 +13,7 @@ use super::Parser;
 
 impl<'src> Parser<'src> {
     // TODO: Add docs
-    pub(crate) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>> {
+    pub(super) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>> {
         let mut lhs_expr = match self.cur_kind() {
             kind if kind.is_literal() => self.parse_literal_expression()?,
             kind if kind.is_prefix_operator() => self.parse_prefix_expression()?,
@@ -55,26 +55,26 @@ impl<'src> Parser<'src> {
         Ok(lhs_expr)
     }
 
-    pub(crate) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
-        let open_paren_span = self.cur_span();
+    pub(super) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::LeftParen)?;
 
-        self.advance()?; // Consume `(`
         let expression = self.parse_expr(0)?;
-        self.expect(TokenKind::RightParen)?;
+        self.expect_peek(TokenKind::RightParen)?;
 
-        let span = self.cur_span().merge(&open_paren_span);
+        let span = self.cur_span().merge(&start_span);
         Ok(Expr::Grouping(Grouping { expression, span }.into()))
     }
 
-    pub(crate) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
+    pub(super) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
         let name = &self.source[self.cur_span()];
         let span = self.cur_span();
         Ok(Expr::Identifier(Identifier { name, span }.into()))
     }
 
-    pub(crate) fn parse_infix_expression(&mut self, left: Expr<'src>) -> Result<Expr<'src>> {
-        let op_kind = self.cur_kind();
-        self.advance()?; // Consume operator
+    pub(super) fn parse_infix_expression(&mut self, left: Expr<'src>) -> Result<Expr<'src>> {
+        let op_kind = self.cur_kind(); // Current token is the infix operator
+        self.advance()?;
 
         let (_, rhs_prec) =
             infix_precedence(op_kind).expect("current token should be an infix operator");
@@ -95,7 +95,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub(crate) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
+    pub(super) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
         let span = self.cur_span();
         let value = match self.cur_kind() {
             TokenKind::Nil => Literal::Nil,
@@ -117,8 +117,8 @@ impl<'src> Parser<'src> {
         Ok(Expr::Literal(LiteralExpr { value, span }.into()))
     }
 
-    pub(crate) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
-        let op_span = self.cur_span();
+    pub(super) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
+        let start_span = self.cur_span();
         let operator = match self.cur_kind() {
             TokenKind::Minus => UnaryOperator::UnaryMinus,
             TokenKind::Bang => UnaryOperator::LogicalNot,
@@ -129,7 +129,7 @@ impl<'src> Parser<'src> {
         let (_, rhs_prec) = prefix_precedence(operator);
         let right = self.parse_expr(rhs_prec)?;
 
-        let span = self.cur_span().merge(&op_span);
+        let span = self.cur_span().merge(&start_span);
         Ok(Expr::Unary(
             Unary {
                 operator,
