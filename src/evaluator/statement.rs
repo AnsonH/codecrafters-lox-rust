@@ -20,6 +20,46 @@ impl StmtVisitor for Evaluator {
         Ok(())
     }
 
+    /// The [ForStatement] is de-sugared during evaluation in the following way:
+    ///
+    /// Before: `for ( <initializer> ; <condition> ; <update> ) <body statement>`
+    ///
+    /// After:
+    /// ```txt, no_run
+    /// {
+    ///     <initializer>;
+    ///     while (<condition>) {
+    ///         <body statement>
+    ///         <update>;
+    ///     }
+    /// }
+    /// ```
+    fn visit_for_stmt(&mut self, stmt: &ForStatement) -> Self::Value {
+        let env_previous = Rc::clone(&self.env);
+
+        let env_new = Environment::from(&self.env);
+        self.env = Rc::new(RefCell::new(env_new));
+
+        match &stmt.init {
+            Some(ForStatementInit::ExpressionStatement(s)) => self.visit_expression_stmt(s)?,
+            Some(ForStatementInit::VarStatement(s)) => self.visit_var_stmt(s)?,
+            _ => (),
+        };
+
+        while stmt.condition.as_ref().map_or(Ok(true), |expr| {
+            expr.accept(self).map(|obj| obj.is_truthy())
+        })? {
+            stmt.body.accept(self)?;
+
+            if let Some(update) = &stmt.update {
+                update.accept(self)?;
+            }
+        }
+
+        self.env = env_previous;
+        Ok(())
+    }
+
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value {
         if stmt.condition.accept(self)?.is_truthy() {
             stmt.then_branch.accept(self)?;

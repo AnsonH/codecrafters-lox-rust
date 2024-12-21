@@ -11,6 +11,7 @@ use super::Parser;
 impl<'src> Parser<'src> {
     pub(super) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
+            TokenKind::For => self.parse_for_statement(),
             TokenKind::If => self.parse_if_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::Print => self.parse_print_statement(),
@@ -47,6 +48,69 @@ impl<'src> Parser<'src> {
         let span = expression.span().expand_right(1);
         Ok(Stmt::ExpressionStatement(
             ExpressionStatement { expression, span }.into(),
+        ))
+    }
+
+    pub(super) fn parse_for_statement(&mut self) -> Result<Stmt<'src>> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::For)?;
+        self.consume(TokenKind::LeftParen)?;
+
+        let init = match self.cur_kind() {
+            TokenKind::Semicolon => {
+                self.consume(TokenKind::Semicolon)?;
+                None
+            }
+            TokenKind::Var => {
+                let Stmt::VarStatement(var_stmt) = self.parse_var_statement()? else {
+                    unreachable!("parse_var_statement returns Stmt::VarStatement")
+                };
+                // No need to consume `;` since it's done by `parse_var_statement`
+                self.advance()?; // Move to first token after `;`
+                Some(ForStatementInit::VarStatement(var_stmt))
+            }
+            _ => {
+                let Stmt::ExpressionStatement(expr_stmt) = self.parse_expression_statement()?
+                else {
+                    unreachable!("parse_expression_statement returns Stmt::ExpressionStatement")
+                };
+                self.advance()?;
+                Some(ForStatementInit::ExpressionStatement(expr_stmt))
+            }
+        };
+
+        let condition = match self.cur_kind() {
+            TokenKind::Semicolon => None,
+            _ => {
+                let expr = self.parse_expr(0)?;
+                self.advance()?; // Move to `;`
+                Some(expr)
+            }
+        };
+        self.consume(TokenKind::Semicolon)?;
+
+        let update = match self.cur_kind() {
+            TokenKind::RightParen => None,
+            _ => {
+                let expr = self.parse_expr(0)?;
+                self.advance()?; // Move to `)`
+                Some(expr)
+            }
+        };
+        self.consume(TokenKind::RightParen)?;
+
+        let body = self.parse_statement()?;
+
+        let span = self.cur_span().merge(&start_span);
+        Ok(Stmt::ForStatement(
+            ForStatement {
+                init,
+                condition,
+                update,
+                body,
+                span,
+            }
+            .into(),
         ))
     }
 
@@ -310,5 +374,22 @@ mod tests {
                 "(print product)",
             ],
         );
+    }
+
+    #[test]
+    fn test_for_statement() {
+        assert(
+            "for (var x = 0; x < 5; x = x + 1) print x;",
+            &["(for (var x 0.0) (< x 5.0) (assign x (+ x 1.0)) (print x))"],
+        );
+        assert(
+            "for (; x < 5; x = x + 1) print x;",
+            &["(for (< x 5.0) (assign x (+ x 1.0)) (print x))"],
+        );
+        assert(
+            "for (;; x = x + 1) print x;",
+            &["(for (assign x (+ x 1.0)) (print x))"],
+        );
+        assert("for (;;) print x;", &["(for (print x))"]);
     }
 }

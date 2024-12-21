@@ -64,31 +64,53 @@ impl AstPrefixPrinter {
 impl StmtVisitor for AstPrefixPrinter {
     type Value = String;
 
-    fn visit_block_stmt(&mut self, expr: &BlockStatement) -> Self::Value {
-        self.parenthesize_stmt("begin", expr.statements.iter().collect())
+    fn visit_block_stmt(&mut self, stmt: &BlockStatement) -> Self::Value {
+        self.parenthesize_stmt("begin", stmt.statements.iter().collect())
     }
 
-    fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value {
-        expr.expression.accept(self)
+    fn visit_expression_stmt(&mut self, stmt: &ExpressionStatement) -> Self::Value {
+        stmt.expression.accept(self)
     }
 
-    fn visit_if_stmt(&mut self, expr: &IfStatement) -> Self::Value {
-        let condition = expr.condition.accept(self);
-        let then_branch = expr.then_branch.accept(self);
-        let else_branch = expr
+    fn visit_for_stmt(&mut self, stmt: &ForStatement) -> Self::Value {
+        let mut items: Vec<String> = vec!["for".into()];
+
+        if let Some(init) = &stmt.init {
+            match init {
+                ForStatementInit::ExpressionStatement(s) => {
+                    items.push(self.visit_expression_stmt(s))
+                }
+                ForStatementInit::VarStatement(s) => items.push(self.visit_var_stmt(s)),
+            }
+        };
+        if let Some(condition) = &stmt.condition {
+            items.push(condition.accept(self));
+        }
+        if let Some(update) = &stmt.update {
+            items.push(update.accept(self))
+        }
+        items.push(stmt.body.accept(self));
+
+        format!("({})", items.join(" "))
+    }
+
+    fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value {
+        let condition = stmt.condition.accept(self);
+        let then_branch = stmt.then_branch.accept(self);
+        let else_branch = stmt
             .else_branch
             .as_ref()
             .map_or("".to_string(), |b| format!(" {}", b.accept(self)));
         format!("(if {condition} {then_branch}{else_branch})")
     }
 
-    fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value {
-        self.parenthesize_expr("print", vec![&expr.expression])
+    fn visit_print_stmt(&mut self, stmt: &PrintStatement) -> Self::Value {
+        self.parenthesize_expr("print", vec![&stmt.expression])
     }
 
-    fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value {
-        let mut output = format!("(var {}", expr.ident.name);
-        if let Some(initializer) = &expr.initializer {
+    fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value {
+        let mut output = format!("(var {}", stmt.ident.name);
+        if let Some(initializer) = &stmt.initializer {
             output.push(' ');
             output.push_str(&initializer.accept(self));
         }
@@ -96,11 +118,11 @@ impl StmtVisitor for AstPrefixPrinter {
         output
     }
 
-    fn visit_while_stmt(&mut self, expr: &WhileStatement) -> Self::Value {
+    fn visit_while_stmt(&mut self, stmt: &WhileStatement) -> Self::Value {
         format!(
             "(while {} {})",
-            expr.condition.accept(self),
-            expr.body.accept(self)
+            stmt.condition.accept(self),
+            stmt.body.accept(self)
         )
     }
 }

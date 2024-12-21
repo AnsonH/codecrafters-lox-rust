@@ -12,6 +12,7 @@ use super::expression::*;
 pub enum Stmt<'src> {
     BlockStatement(Box<BlockStatement<'src>>),
     ExpressionStatement(Box<ExpressionStatement<'src>>),
+    ForStatement(Box<ForStatement<'src>>),
     IfStatement(Box<IfStatement<'src>>),
     PrintStatement(Box<PrintStatement<'src>>),
     VarStatement(Box<VarStatement<'src>>),
@@ -23,12 +24,13 @@ impl Stmt<'_> {
     /// and perform operations based on the expression's type.
     pub fn accept<V: StmtVisitor>(&self, visitor: &mut V) -> V::Value {
         match self {
-            Stmt::BlockStatement(expr) => visitor.visit_block_stmt(expr),
-            Stmt::ExpressionStatement(expr) => visitor.visit_expression_stmt(expr),
-            Stmt::IfStatement(expr) => visitor.visit_if_stmt(expr),
-            Stmt::PrintStatement(expr) => visitor.visit_print_stmt(expr),
-            Stmt::VarStatement(expr) => visitor.visit_var_stmt(expr),
-            Stmt::WhileStatement(expr) => visitor.visit_while_stmt(expr),
+            Stmt::BlockStatement(stmt) => visitor.visit_block_stmt(stmt),
+            Stmt::ExpressionStatement(stmt) => visitor.visit_expression_stmt(stmt),
+            Stmt::ForStatement(stmt) => visitor.visit_for_stmt(stmt),
+            Stmt::IfStatement(stmt) => visitor.visit_if_stmt(stmt),
+            Stmt::PrintStatement(stmt) => visitor.visit_print_stmt(stmt),
+            Stmt::VarStatement(stmt) => visitor.visit_var_stmt(stmt),
+            Stmt::WhileStatement(stmt) => visitor.visit_while_stmt(stmt),
         }
     }
 
@@ -37,6 +39,7 @@ impl Stmt<'_> {
         match self {
             Self::BlockStatement(s) => s.span,
             Self::ExpressionStatement(s) => s.span,
+            Self::ForStatement(s) => s.span,
             Self::IfStatement(s) => s.span,
             Self::PrintStatement(s) => s.span,
             Self::VarStatement(s) => s.span,
@@ -59,6 +62,7 @@ pub trait StmtVisitor {
 
     fn visit_block_stmt(&mut self, stmt: &BlockStatement) -> Self::Value;
     fn visit_expression_stmt(&mut self, stmt: &ExpressionStatement) -> Self::Value;
+    fn visit_for_stmt(&mut self, stmt: &ForStatement) -> Self::Value;
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value;
     fn visit_print_stmt(&mut self, stmt: &PrintStatement) -> Self::Value;
     fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value;
@@ -77,6 +81,29 @@ pub struct BlockStatement<'src> {
 pub struct ExpressionStatement<'src> {
     pub expression: Expr<'src>,
     pub span: Span,
+}
+
+/// Syntax: `for ( <initializer?> ; <condition?> ; <update?> ) <statement>`
+///
+/// # Syntactic Sugar
+///
+/// The [original Lox implementation](https://craftinginterpreters.com/control-flow.html#for-loops)
+/// immediately de-sugars for-loop into a while-loop during parsing. However, our
+/// implementation has a dedicated for-statement AST node, and the de-sugaring
+/// will happen during evaluation.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ForStatement<'src> {
+    pub init: Option<ForStatementInit<'src>>,
+    pub condition: Option<Expr<'src>>,
+    pub update: Option<Expr<'src>>,
+    pub body: Stmt<'src>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ForStatementInit<'src> {
+    ExpressionStatement(Box<ExpressionStatement<'src>>),
+    VarStatement(Box<VarStatement<'src>>),
 }
 
 /// Syntax:
