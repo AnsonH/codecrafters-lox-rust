@@ -15,6 +15,7 @@ pub enum Stmt<'src> {
     IfStatement(Box<IfStatement<'src>>),
     PrintStatement(Box<PrintStatement<'src>>),
     VarStatement(Box<VarStatement<'src>>),
+    WhileStatement(Box<WhileStatement<'src>>),
 }
 
 impl Stmt<'_> {
@@ -27,6 +28,7 @@ impl Stmt<'_> {
             Stmt::IfStatement(expr) => visitor.visit_if_stmt(expr),
             Stmt::PrintStatement(expr) => visitor.visit_print_stmt(expr),
             Stmt::VarStatement(expr) => visitor.visit_var_stmt(expr),
+            Stmt::WhileStatement(expr) => visitor.visit_while_stmt(expr),
         }
     }
 
@@ -38,6 +40,7 @@ impl Stmt<'_> {
             Self::IfStatement(s) => s.span,
             Self::PrintStatement(s) => s.span,
             Self::VarStatement(s) => s.span,
+            Self::WhileStatement(s) => s.span,
         }
     }
 }
@@ -54,11 +57,12 @@ impl Stmt<'_> {
 pub trait StmtVisitor {
     type Value;
 
-    fn visit_block_stmt(&mut self, expr: &BlockStatement) -> Self::Value;
-    fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value;
-    fn visit_if_stmt(&mut self, expr: &IfStatement) -> Self::Value;
-    fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value;
-    fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value;
+    fn visit_block_stmt(&mut self, stmt: &BlockStatement) -> Self::Value;
+    fn visit_expression_stmt(&mut self, stmt: &ExpressionStatement) -> Self::Value;
+    fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value;
+    fn visit_print_stmt(&mut self, stmt: &PrintStatement) -> Self::Value;
+    fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value;
+    fn visit_while_stmt(&mut self, stmt: &WhileStatement) -> Self::Value;
 }
 
 /// Syntax: `{ <statement(s)> }`
@@ -100,5 +104,13 @@ pub struct PrintStatement<'src> {
 pub struct VarStatement<'src> {
     pub ident: Identifier<'src>,
     pub initializer: Option<Expr<'src>>,
+    pub span: Span,
+}
+
+/// Syntax: `while ( <expression> ) <statement>`
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhileStatement<'src> {
+    pub condition: Expr<'src>,
+    pub body: Stmt<'src>,
     pub span: Span,
 }

@@ -15,6 +15,7 @@ impl<'src> Parser<'src> {
             TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::Print => self.parse_print_statement(),
             TokenKind::Var => self.parse_var_statement(),
+            TokenKind::While => self.parse_while_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -51,8 +52,8 @@ impl<'src> Parser<'src> {
 
     pub(super) fn parse_if_statement(&mut self) -> Result<Stmt<'src>> {
         let start_span = self.cur_span();
-
         self.consume(TokenKind::If)?;
+
         self.consume(TokenKind::LeftParen)?;
         let condition = self.parse_expr(0)?;
         self.advance()?;
@@ -116,6 +117,28 @@ impl<'src> Parser<'src> {
             VarStatement {
                 ident: *name,
                 initializer,
+                span,
+            }
+            .into(),
+        ))
+    }
+
+    pub(super) fn parse_while_statement(&mut self) -> Result<Stmt<'src>> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::While)?;
+
+        self.consume(TokenKind::LeftParen)?;
+        let condition = self.parse_expr(0)?;
+        self.advance()?;
+        self.consume(TokenKind::RightParen)?;
+
+        let body = self.parse_statement()?;
+
+        let span = self.cur_span().merge(&start_span);
+        Ok(Stmt::WhileStatement(
+            WhileStatement {
+                condition,
+                body,
                 span,
             }
             .into(),
@@ -261,6 +284,30 @@ mod tests {
                 "(var age 2.0)",
                 "(if (>= age 18.0) (begin (assign stage adult)) (begin (assign stage child)))",
                 "(print stage)",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_while_statement() {
+        assert(
+            "while (foo < 3) print foo;",
+            &["(while (< foo 3.0) (print foo))"],
+        );
+        assert(
+            r"
+            var product = 1;
+            var i = 1;
+            while (i <= 5) {
+                product = product * i;
+                i = i + 1;
+            }
+            print product;",
+            &[
+                "(var product 1.0)",
+                "(var i 1.0)",
+                "(while (<= i 5.0) (begin (assign product (* product i)) (assign i (+ i 1.0))))",
+                "(print product)",
             ],
         );
     }

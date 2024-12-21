@@ -95,6 +95,14 @@ impl StmtVisitor for AstPrefixPrinter {
         output.push(')');
         output
     }
+
+    fn visit_while_stmt(&mut self, expr: &WhileStatement) -> Self::Value {
+        format!(
+            "(while {} {})",
+            expr.condition.accept(self),
+            expr.body.accept(self)
+        )
+    }
 }
 
 impl ExprVisitor for AstPrefixPrinter {
