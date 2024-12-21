@@ -9,13 +9,21 @@ use crate::{
 use super::Parser;
 
 impl<'src> Parser<'src> {
+    pub(super) fn parse_declaration_statement(&mut self) -> Result<Stmt<'src>> {
+        match self.cur_kind() {
+            TokenKind::Class => todo!(),
+            TokenKind::Fun => todo!(),
+            TokenKind::Var => self.parse_var_statement(),
+            _ => self.parse_statement(),
+        }
+    }
+
     pub(super) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
             TokenKind::For => self.parse_for_statement(),
             TokenKind::If => self.parse_if_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::Print => self.parse_print_statement(),
-            TokenKind::Var => self.parse_var_statement(),
             TokenKind::While => self.parse_while_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -28,7 +36,7 @@ impl<'src> Parser<'src> {
         self.consume(TokenKind::LeftBrace)?;
 
         while !matches!(self.cur_kind(), TokenKind::RightBrace | TokenKind::Eof) {
-            statements.push(self.parse_statement()?);
+            statements.push(self.parse_declaration_statement()?);
             self.advance()?;
         }
         if !self.is_cur_kind(TokenKind::RightBrace) {

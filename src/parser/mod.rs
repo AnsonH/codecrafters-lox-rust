@@ -43,7 +43,7 @@ impl<'src> Parser<'src> {
 
         self.advance()?;
         while !self.is_cur_kind(TokenKind::Eof) {
-            let statement = self.parse_statement()?;
+            let statement = self.parse_declaration_statement()?;
             body.push(statement);
             self.advance()?;
         }
