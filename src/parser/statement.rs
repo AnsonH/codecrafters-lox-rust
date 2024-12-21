@@ -9,9 +9,10 @@ use crate::{
 use super::Parser;
 
 impl<'src> Parser<'src> {
-    /// Entry point for parsing a statement.
+    // TODO: Change all to `pub(super)`
     pub(crate) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
+            TokenKind::If => self.parse_if_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::Print => self.parse_print_statement(),
             TokenKind::Var => self.parse_var_statement(),
@@ -51,6 +52,36 @@ impl<'src> Parser<'src> {
         ))
     }
 
+    pub(crate) fn parse_if_statement(&mut self) -> Result<Stmt<'src>> {
+        let start_span = self.cur_span();
+        self.advance()?;
+
+        self.expect_cur(TokenKind::LeftParen)?;
+        let condition = self.parse_expr(0)?;
+        self.advance()?;
+        self.expect_cur(TokenKind::RightParen)?;
+
+        let then_branch = self.parse_statement()?;
+        let else_branch = if self.is_peek_kind(TokenKind::Else) {
+            self.advance()?; // Move to `else`
+            self.advance()?; // Move to first token of else branch
+            Some(self.parse_statement()?)
+        } else {
+            None
+        };
+
+        let span = self.cur_span().merge(&start_span);
+        Ok(Stmt::IfStatement(
+            IfStatement {
+                condition,
+                then_branch,
+                else_branch,
+                span,
+            }
+            .into(),
+        ))
+    }
+
     pub(crate) fn parse_print_statement(&mut self) -> Result<Stmt<'src>> {
         let print_keyword_span = self.cur_span();
         self.advance()?;
@@ -87,11 +118,12 @@ impl<'src> Parser<'src> {
         };
         self.expect(TokenKind::Semicolon)?;
 
+        let span = self.cur_span().merge(&var_keyword_span);
         Ok(Stmt::VarStatement(
             VarStatement {
                 ident: *name,
                 initializer,
-                span: self.cur_span().merge(&var_keyword_span),
+                span,
             }
             .into(),
         ))
@@ -210,6 +242,33 @@ mod tests {
             SyntaxError::UnclosedBlock {
                 span: Span::new(0, 1),
             },
+        );
+    }
+
+    #[test]
+    fn test_if_statement() {
+        assert("if (x > 1) print x;", &["(if (> x 1.0) (print x))"]);
+        assert(
+            r"if (x > 1) { x = 2; print x; }",
+            &["(if (> x 1.0) (begin (assign x 2.0) (print x)))"],
+        );
+        assert(
+            "if (x > 1) print x; else print 0;",
+            &["(if (> x 1.0) (print x) (print 0.0))"],
+        );
+        assert(
+            r#"
+            var stage = "unknown";
+            var age = 2;
+            if (age >= 18) { stage = "adult"; } 
+            else { stage = "child"; }
+            print stage;"#,
+            &[
+                "(var stage unknown)",
+                "(var age 2.0)",
+                "(if (>= age 18.0) (begin (assign stage adult)) (begin (assign stage child)))",
+                "(print stage)",
+            ],
         );
     }
 }

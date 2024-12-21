@@ -12,6 +12,7 @@ use super::expression::*;
 pub enum Stmt<'src> {
     BlockStatement(Box<BlockStatement<'src>>),
     ExpressionStatement(Box<ExpressionStatement<'src>>),
+    IfStatement(Box<IfStatement<'src>>),
     PrintStatement(Box<PrintStatement<'src>>),
     VarStatement(Box<VarStatement<'src>>),
 }
@@ -23,6 +24,7 @@ impl<'src> Stmt<'src> {
         match self {
             Stmt::BlockStatement(expr) => visitor.visit_block_stmt(expr),
             Stmt::ExpressionStatement(expr) => visitor.visit_expression_stmt(expr),
+            Stmt::IfStatement(expr) => visitor.visit_if_stmt(expr),
             Stmt::PrintStatement(expr) => visitor.visit_print_stmt(expr),
             Stmt::VarStatement(expr) => visitor.visit_var_stmt(expr),
         }
@@ -33,6 +35,7 @@ impl<'src> Stmt<'src> {
         match self {
             Self::BlockStatement(s) => s.span,
             Self::ExpressionStatement(s) => s.span,
+            Self::IfStatement(s) => s.span,
             Self::PrintStatement(s) => s.span,
             Self::VarStatement(s) => s.span,
         }
@@ -53,6 +56,7 @@ pub trait StmtVisitor {
 
     fn visit_block_stmt(&mut self, expr: &BlockStatement) -> Self::Value;
     fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value;
+    fn visit_if_stmt(&mut self, expr: &IfStatement) -> Self::Value;
     fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value;
     fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value;
 }
@@ -68,6 +72,17 @@ pub struct BlockStatement<'src> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExpressionStatement<'src> {
     pub expression: Expr<'src>,
+    pub span: Span,
+}
+
+/// Syntax:
+/// - `if ( <expression> ) <statement>`
+/// - `if ( <expression> ) <statement> else <statement>`
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfStatement<'src> {
+    pub condition: Expr<'src>,
+    pub then_branch: Stmt<'src>,
+    pub else_branch: Option<Stmt<'src>>,
     pub span: Span,
 }
 

@@ -72,14 +72,6 @@ impl<'src> Parser<'src> {
         self.parse_expr(0)
     }
 
-    /// Advance to the next token.
-    pub(crate) fn advance(&mut self) -> Result<(), SyntaxError> {
-        if let Some(result) = self.lexer.next() {
-            self.token = result?;
-        }
-        Ok(())
-    }
-
     /// Get current token's kind.
     #[inline]
     pub(crate) fn cur_kind(&self) -> TokenKind {
@@ -105,7 +97,34 @@ impl<'src> Parser<'src> {
         &self.source[self.cur_token().span]
     }
 
-    /// Consumes the next token if it equals to `expected`, otherwise returns `Err`.
+    // TODO: Change return type to `miette::Result<()>`
+    /// Advance to the next token.
+    pub(crate) fn advance(&mut self) -> Result<(), SyntaxError> {
+        if let Some(result) = self.lexer.next() {
+            self.token = result?;
+        }
+        Ok(())
+    }
+
+    /// If current token kind is `expected`, advances to next token. Otherwise
+    /// return unexpected token error.
+    pub(crate) fn expect_cur(&mut self, expected: TokenKind) -> miette::Result<()> {
+        if self.is_cur_kind(expected) {
+            self.advance()?;
+            Ok(())
+        } else {
+            Err(SyntaxError::UnexpectedToken {
+                expected: expected.to_str().into(),
+                actual: self.cur_kind().to_str().into(),
+                span: self.cur_span(),
+            }
+            .into())
+        }
+    }
+
+    // TODO: Rename to `expect_peek`
+    /// If peek token kind is `expected`, advance to that token. Otherwise return
+    /// unexpected token error.
     pub(crate) fn expect(&mut self, expected: TokenKind) -> miette::Result<()> {
         match self.lexer.peek() {
             Some(Ok(token)) => {

@@ -20,6 +20,10 @@ impl StmtVisitor for Evaluator {
         Ok(())
     }
 
+    fn visit_if_stmt(&mut self, expr: &IfStatement) -> Self::Value {
+        todo!()
+    }
+
     fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value {
         println!("{}", expr.expression.accept(self)?);
         Ok(())
@@ -36,6 +40,7 @@ impl StmtVisitor for Evaluator {
     }
 }
 
+// TODO: Replace unit tests with integration tests
 #[cfg(test)]
 mod tests {
     use crate::{ast::expression::Identifier, parser::Parser};
@@ -88,6 +93,4 @@ mod tests {
         assert_env_val(&result, "b", &Object::Number(31.0));
         assert_env_val(&result, "c", &Object::Number(30.0));
     }
-
-    // TODO: Add tests for block statements
 }

@@ -38,13 +38,23 @@ impl AstPrefixPrinter {
         expr.accept(self)
     }
 
-    // TODO: Make this generic by making `Expr` and `Stmt` impl a trait with `accept()`
-    fn parenthesize(&mut self, name: &str, exprs: Vec<&Expr>) -> String {
+    fn parenthesize_expr(&mut self, name: &str, exprs: Vec<&Expr>) -> String {
         let mut output = String::from("(");
         output.push_str(name);
         for expr in exprs {
             output.push(' ');
             output.push_str(&expr.accept(self));
+        }
+        output.push(')');
+        output
+    }
+
+    fn parenthesize_stmt(&mut self, name: &str, stmts: Vec<&Stmt>) -> String {
+        let mut output = String::from("(");
+        output.push_str(name);
+        for stmt in stmts {
+            output.push(' ');
+            output.push_str(&stmt.accept(self));
         }
         output.push(')');
         output
@@ -55,21 +65,25 @@ impl StmtVisitor for AstPrefixPrinter {
     type Value = String;
 
     fn visit_block_stmt(&mut self, expr: &BlockStatement) -> Self::Value {
-        let mut output = String::from("(begin");
-        for stmt in &expr.statements {
-            output.push(' ');
-            output.push_str(&stmt.accept(self));
-        }
-        output.push(')');
-        output
+        self.parenthesize_stmt("begin", expr.statements.iter().collect())
     }
 
     fn visit_expression_stmt(&mut self, expr: &ExpressionStatement) -> Self::Value {
         expr.expression.accept(self)
     }
 
+    fn visit_if_stmt(&mut self, expr: &IfStatement) -> Self::Value {
+        let condition = expr.condition.accept(self);
+        let then_branch = expr.then_branch.accept(self);
+        let else_branch = expr
+            .else_branch
+            .as_ref()
+            .map_or("".to_string(), |b| format!(" {}", b.accept(self)));
+        format!("(if {condition} {then_branch}{else_branch})")
+    }
+
     fn visit_print_stmt(&mut self, expr: &PrintStatement) -> Self::Value {
-        self.parenthesize("print", vec![&expr.expression])
+        self.parenthesize_expr("print", vec![&expr.expression])
     }
 
     fn visit_var_stmt(&mut self, expr: &VarStatement) -> Self::Value {
@@ -87,15 +101,15 @@ impl ExprVisitor for AstPrefixPrinter {
     type Value = String;
 
     fn visit_assignment_expr(&mut self, expr: &Assignment) -> Self::Value {
-        self.parenthesize("assign", vec![&expr.left, &expr.right])
+        self.parenthesize_expr("assign", vec![&expr.left, &expr.right])
     }
 
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value {
-        self.parenthesize(&expr.operator.to_string(), vec![&expr.left, &expr.right])
+        self.parenthesize_expr(&expr.operator.to_string(), vec![&expr.left, &expr.right])
     }
 
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value {
-        self.parenthesize("group", vec![&expr.expression])
+        self.parenthesize_expr("group", vec![&expr.expression])
     }
 
     fn visit_identifier_expr(&mut self, expr: &Identifier) -> Self::Value {
@@ -119,6 +133,6 @@ impl ExprVisitor for AstPrefixPrinter {
     }
 
     fn visit_unary_expr(&mut self, expr: &Unary) -> Self::Value {
-        self.parenthesize(&expr.operator.to_string(), vec![&expr.right])
+        self.parenthesize_expr(&expr.operator.to_string(), vec![&expr.right])
     }
 }
