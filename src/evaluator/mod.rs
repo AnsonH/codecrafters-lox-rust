@@ -2,6 +2,8 @@
 
 mod environment;
 mod expression;
+mod function;
+mod native_function;
 mod object;
 mod statement;
 
@@ -11,6 +13,8 @@ use environment::Environment;
 use miette::Result;
 use object::Object;
 
+use self::native_function::register_native_functions;
+
 use crate::ast::{Expr, Program, Stmt};
 
 pub struct Evaluator {
@@ -19,9 +23,9 @@ pub struct Evaluator {
 
 impl Evaluator {
     pub fn new() -> Self {
-        Self {
-            env: Rc::new(RefCell::new(Environment::new())),
-        }
+        let env = Rc::new(RefCell::new(Environment::new()));
+        register_native_functions(Rc::clone(&env));
+        Self { env }
     }
 
     /// Entry point to evaluate a program.
@@ -33,6 +37,9 @@ impl Evaluator {
     }
 
     /// Entry point to evaluate an expression.
+    // TODO: We shouldn't expose this to public, since it forces us to make `Object`
+    // and all its relevant structs/enums public. Instead, provide a public entry
+    // point that accepts a "stdout" to let us write output to it
     pub fn evaluate_expression(&mut self, expr: &Expr) -> Result<Object> {
         expr.accept(self)
     }

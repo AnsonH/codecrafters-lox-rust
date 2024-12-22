@@ -67,6 +67,14 @@ pub enum SyntaxError {
 /// Runtime errors during evaluation.
 #[derive(Error, Diagnostic, Clone, Debug, PartialEq)]
 pub enum RuntimeError {
+    #[error("Expected {expected} arguments but got {actual}.")]
+    CallArityMismatch {
+        expected: usize,
+        actual: usize,
+        #[label("this callee")]
+        span: Span,
+    },
+
     #[error("Invalid assignment target.")]
     InvalidAssignment {
         #[label("cannot assign value to this target")]
@@ -76,6 +84,12 @@ pub enum RuntimeError {
     #[error("Operands must be numbers.")]
     InfixNonNumberOperandsError {
         #[label("this expression")]
+        span: Span,
+    },
+
+    #[error("Can only call functions and classes.")]
+    NotCallable {
+        #[label("this cannot be called")]
         span: Span,
     },
 

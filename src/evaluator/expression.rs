@@ -78,7 +78,29 @@ impl ExprVisitor for Evaluator {
     }
 
     fn visit_call_expr(&mut self, expr: &Call) -> Self::Value {
-        todo!()
+        let callee = expr.callee.accept(self)?;
+        // Note: We lazily evaluate arguments only if the expression is callable
+        let args_iter = expr.arguments.iter().map(|arg| arg.accept(self));
+
+        match callee {
+            Object::Function(function) => {
+                // If `args_iter` encounter Error during map, it stops and return `Err`
+                let args = args_iter.collect::<Result<Vec<Object>>>()?;
+                if args.len() != function.arity() {
+                    return Err(RuntimeError::CallArityMismatch {
+                        expected: function.arity(),
+                        actual: args.len(),
+                        span: expr.callee.span(),
+                    }
+                    .into());
+                }
+                function.call(self, &args)
+            }
+            _ => Err(RuntimeError::NotCallable {
+                span: expr.callee.span(),
+            }
+            .into()),
+        }
     }
 
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value {
