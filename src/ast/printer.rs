@@ -138,6 +138,11 @@ impl ExprVisitor for AstPrefixPrinter {
         self.parenthesize_expr(&expr.operator.to_string(), vec![&expr.left, &expr.right])
     }
 
+    fn visit_call_expr(&mut self, expr: &Call) -> Self::Value {
+        let callee = expr.callee.accept(self);
+        self.parenthesize_expr(&callee, expr.arguments.iter().collect())
+    }
+
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value {
         self.parenthesize_expr("group", vec![&expr.expression])
     }

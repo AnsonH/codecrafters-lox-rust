@@ -36,6 +36,13 @@ pub enum SyntaxError {
         span: Span,
     },
 
+    #[error("Can't have more than {max_count} arguments.")]
+    TooManyCallArguments {
+        max_count: usize,
+        #[label("This callee")]
+        span: Span,
+    },
+
     #[error("Expect '}}' after block.")]
     UnclosedBlock {
         #[label("this block is unclosed")]
@@ -121,6 +128,7 @@ impl SyntaxError {
             Self::MissingExpression { span, .. } => *span,
             Self::MissingVariableName { span, .. } => *span,
             Self::SingleTokenError { span, .. } => *span,
+            Self::TooManyCallArguments { span, .. } => *span,
             Self::UnclosedBlock { span, .. } => *span,
             Self::UnexpectedToken { span, .. } => *span,
             Self::UnterminatedStringError { span, .. } => *span,

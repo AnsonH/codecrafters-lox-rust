@@ -12,6 +12,7 @@ use super::{BinaryOperator, UnaryOperator};
 pub enum Expr<'src> {
     Assignment(Box<Assignment<'src>>),
     Binary(Box<Binary<'src>>),
+    Call(Box<Call<'src>>),
     Grouping(Box<Grouping<'src>>),
     Identifier(Box<Identifier<'src>>),
     Literal(Box<LiteralExpr<'src>>),
@@ -25,6 +26,7 @@ impl Expr<'_> {
         match self {
             Expr::Assignment(expr) => visitor.visit_assignment_expr(expr),
             Expr::Binary(expr) => visitor.visit_binary_expr(expr),
+            Expr::Call(expr) => visitor.visit_call_expr(expr),
             Expr::Grouping(expr) => visitor.visit_grouping_expr(expr),
             Expr::Identifier(expr) => visitor.visit_identifier_expr(expr),
             Expr::Literal(expr) => visitor.visit_literal_expr(expr),
@@ -38,6 +40,7 @@ impl Expr<'_> {
         match self {
             Expr::Assignment(e) => e.span,
             Expr::Binary(e) => e.span,
+            Expr::Call(e) => e.span,
             Expr::Grouping(e) => e.span,
             Expr::Identifier(e) => e.span,
             Expr::Literal(e) => e.span,
@@ -60,6 +63,7 @@ pub trait ExprVisitor {
 
     fn visit_assignment_expr(&mut self, expr: &Assignment) -> Self::Value;
     fn visit_binary_expr(&mut self, expr: &Binary) -> Self::Value;
+    fn visit_call_expr(&mut self, expr: &Call) -> Self::Value;
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value;
     fn visit_identifier_expr(&mut self, expr: &Identifier) -> Self::Value;
     fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> Self::Value;
@@ -80,6 +84,14 @@ pub struct Binary<'src> {
     pub left: Expr<'src>,
     pub operator: BinaryOperator,
     pub right: Expr<'src>,
+    pub span: Span,
+}
+
+/// Call expression (e.g. `clock()`)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Call<'src> {
+    pub callee: Expr<'src>,
+    pub arguments: Vec<Expr<'src>>,
     pub span: Span,
 }
 

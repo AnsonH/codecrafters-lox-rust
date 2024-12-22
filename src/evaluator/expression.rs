@@ -77,6 +77,10 @@ impl ExprVisitor for Evaluator {
         }
     }
 
+    fn visit_call_expr(&mut self, expr: &Call) -> Self::Value {
+        todo!()
+    }
+
     fn visit_grouping_expr(&mut self, expr: &Grouping) -> Self::Value {
         expr.expression.accept(self)
     }

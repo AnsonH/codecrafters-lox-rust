@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expression::*,
-        operator::{infix_precedence, prefix_precedence},
+        operator::{infix_precedence, postfix_precedence, prefix_precedence},
         BinaryOperator, Expr, Literal, UnaryOperator,
     },
     error::SyntaxError,
@@ -12,6 +12,8 @@ use miette::{Report, Result};
 use super::Parser;
 
 impl<'src> Parser<'src> {
+    const MAX_CALL_ARGUMENTS: usize = 255;
+
     // TODO: Add docs
     pub(super) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>> {
         let mut lhs_expr = match self.cur_kind() {
@@ -40,8 +42,18 @@ impl<'src> Parser<'src> {
             }
 
             let peek_kind = peek_result.expect("handled Err above").kind;
+
+            if let Some((left_prec, _)) = postfix_precedence(peek_kind) {
+                if left_prec < min_precedence {
+                    break;
+                }
+                self.advance()?;
+                lhs_expr = self.parse_postfix_expression(lhs_expr)?;
+                continue;
+            }
+
             let Some((lhs_prec, _)) = infix_precedence(peek_kind) else {
-                break;
+                break; // peek token is not infix operator
             };
 
             if lhs_prec < min_precedence {
@@ -53,6 +65,47 @@ impl<'src> Parser<'src> {
         }
 
         Ok(lhs_expr)
+    }
+
+    pub(super) fn parse_call_expression(&mut self, callee: Expr<'src>) -> Result<Expr<'src>> {
+        let arguments = self.parse_expression_list(TokenKind::RightParen)?;
+        if arguments.len() >= Parser::MAX_CALL_ARGUMENTS {
+            return Err(SyntaxError::TooManyCallArguments {
+                max_count: Parser::MAX_CALL_ARGUMENTS,
+                span: callee.span(),
+            }
+            .into());
+        }
+        let span = self.cur_span().merge(&callee.span());
+        Ok(Expr::Call(
+            Call {
+                callee,
+                arguments,
+                span,
+            }
+            .into(),
+        ))
+    }
+
+    /// Parses a comma-separated list of expressions. The `end` token marks the
+    /// end of the list.
+    ///
+    /// The cursor position (`self.token`) should be one token before the first
+    /// element or the `end` token when it is called. For most cases this would
+    /// be the starting bracket.
+    pub(super) fn parse_expression_list(&mut self, end: TokenKind) -> Result<Vec<Expr<'src>>> {
+        let mut list: Vec<Expr<'src>> = vec![];
+        if !self.is_peek_kind(end) {
+            self.advance()?;
+            loop {
+                list.push(self.parse_expr(0)?);
+                if !self.try_consume_peek(TokenKind::Comma)? {
+                    break;
+                }
+            }
+        }
+        self.expect_peek(end)?;
+        Ok(list)
     }
 
     pub(super) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
@@ -115,6 +168,13 @@ impl<'src> Parser<'src> {
             _ => unreachable!("unexpected literal kind: {}", self.cur_kind()),
         };
         Ok(Expr::Literal(LiteralExpr { value, span }.into()))
+    }
+
+    pub(super) fn parse_postfix_expression(&mut self, left: Expr<'src>) -> Result<Expr<'src>> {
+        match self.cur_kind() {
+            TokenKind::LeftParen => self.parse_call_expression(left),
+            _ => unreachable!("unexpected postfix operator: {}", self.cur_kind()),
+        }
     }
 
     pub(super) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
@@ -295,6 +355,23 @@ mod tests {
         assert(
             "1 + 2 and 3 or 4 - 5",
             "(or (and (+ 1.0 2.0) 3.0) (- 4.0 5.0))",
+        );
+    }
+
+    #[test]
+    fn test_call() {
+        assert("foo()", "(foo)");
+        assert("foo(1)", "(foo 1.0)");
+        assert("foo(1 + 2, 3, 4 * 5)", "(foo (+ 1.0 2.0) 3.0 (* 4.0 5.0))");
+        assert("foo(a)(b, bar(c))", "((foo a) b (bar c))");
+
+        assert_error(
+            "foo(1, 2",
+            SyntaxError::UnexpectedToken {
+                expected: ")".into(),
+                actual: "EOF".into(),
+                span: Span::new(8, 8),
+            },
         );
     }
 

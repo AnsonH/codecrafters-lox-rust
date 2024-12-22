@@ -57,6 +57,7 @@ impl From<TokenKind> for BinaryOperator {
 }
 
 // TODO: Replace with enum
+/// Gets the right precedence value of a prefix operator.
 pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
     match op {
         UnaryOperator::LogicalNot | UnaryOperator::UnaryMinus => ((), 15),
@@ -79,6 +80,17 @@ pub(crate) fn infix_precedence(kind: TokenKind) -> Option<(u8, u8)> {
         Greater | GreaterEqual | Less | LessEqual => Some((8, 9)),
         Plus | Minus => Some((10, 11)),
         Star | Slash => Some((12, 13)),
+        _ => None,
+    }
+}
+
+/// Gets the left precedence value of a postfix operator.
+///
+/// Returning `None` means the token kind is not an postfix operator.
+pub(crate) fn postfix_precedence(kind: TokenKind) -> Option<(u8, ())> {
+    use TokenKind::*;
+    match kind {
+        LeftParen => Some((17, ())), // Call expression
         _ => None,
     }
 }
