@@ -7,7 +7,9 @@ use std::{
 
 use miette::{IntoDiagnostic, Result};
 
-use super::{environment::Environment, function::Function, object::Object, Evaluator};
+use crate::evaluator::{environment::Environment, object::Object, Evaluator};
+
+use super::Function;
 
 /// A built-in (native) function.
 #[derive(Debug, Clone, PartialEq)]
@@ -24,7 +26,7 @@ pub enum NativeFunctionName {
 
 /// Register native functions to the environment. To be called when an
 /// evaluator is created.
-pub(super) fn register_native_functions(env: Rc<RefCell<Environment>>) {
+pub fn register_native_functions(env: Rc<RefCell<Environment>>) {
     env.borrow_mut().define(
         "clock".into(),
         NativeFunction::new_obj(0, NativeFunctionName::Clock),

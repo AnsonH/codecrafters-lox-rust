@@ -3,7 +3,6 @@
 mod environment;
 mod expression;
 mod function;
-mod native_function;
 mod object;
 mod statement;
 
@@ -13,7 +12,7 @@ use environment::Environment;
 use miette::Result;
 use object::Object;
 
-use self::native_function::register_native_functions;
+use self::function::register_native_functions;
 
 use crate::ast::{Expr, Program, Stmt};
 
