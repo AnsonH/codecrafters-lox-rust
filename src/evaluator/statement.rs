@@ -4,7 +4,9 @@ use miette::Result;
 
 use crate::ast::statement::*;
 
-use super::{environment::Environment, object::Object, Evaluator};
+use super::{
+    environment::Environment, function::user_function::UserFunction, object::Object, Evaluator,
+};
 
 impl StmtVisitor for Evaluator {
     type Value = Result<()>;
@@ -61,7 +63,11 @@ impl StmtVisitor for Evaluator {
     }
 
     fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value {
-        todo!()
+        let function = UserFunction::new_obj(stmt.clone());
+        self.env
+            .borrow_mut()
+            .define(stmt.name.name.clone(), function);
+        Ok(())
     }
 
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value {

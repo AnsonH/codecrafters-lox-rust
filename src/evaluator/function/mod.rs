@@ -1,5 +1,5 @@
-mod native_function;
-mod user_function;
+pub(super) mod native_function;
+pub(super) mod user_function;
 
 pub use self::native_function::register_native_functions;
 
@@ -30,7 +30,7 @@ impl Function {
     pub(super) fn arity(&self) -> usize {
         match self {
             Function::Native(function) => function.arity,
-            Function::User(function) => todo!(),
+            Function::User(function) => function.arity(),
         }
     }
 }

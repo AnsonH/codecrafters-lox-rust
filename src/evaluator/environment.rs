@@ -23,6 +23,7 @@ impl Environment {
         }
     }
 
+    /// Creates a new environment that has a parent of `enclosing`.
     pub fn from(enclosing: &Rc<RefCell<Environment>>) -> Self {
         Self {
             enclosing: Some(Rc::clone(enclosing)),
