@@ -8,7 +8,7 @@
 /// use rust_lox::{ast::{expression::Identifier, Expr}, unwrap_ast_node};
 ///
 /// let expr = Expr::Identifier(Box::new(Identifier {
-///     name: "foo",
+///     name: "foo".to_string(),
 ///     span: (0, 3).into(),
 /// }));
 /// let identifier = unwrap_ast_node!(expr, Expr::Identifier);
@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn test_unwrap_ast_node() {
         let ident = Box::new(Identifier {
-            name: "foo",
+            name: "foo".to_string(),
             span: Span::new(0, 3),
         });
         let print = Box::new(PrintStatement {

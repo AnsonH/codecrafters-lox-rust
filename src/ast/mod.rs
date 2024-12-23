@@ -15,7 +15,7 @@ use crate::span::Span;
 
 /// Root AST node that represents the whole program.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Program<'src> {
-    pub body: Vec<Stmt<'src>>,
+pub struct Program {
+    pub body: Vec<Stmt>,
     pub span: Span,
 }

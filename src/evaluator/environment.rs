@@ -63,13 +63,13 @@ impl Environment {
 
     /// Gets the value of an identifier.
     pub fn get(&self, ident: &Identifier) -> Result<Object> {
-        if let Some(value) = self.values.get(ident.name) {
+        if let Some(value) = self.values.get(&ident.name) {
             Ok(value.clone())
         } else if let Some(enclosing) = &self.enclosing {
             enclosing.borrow().get(ident)
         } else {
             Err(RuntimeError::UndefinedVariable {
-                name: ident.name.into(),
+                name: ident.name.clone(),
                 span: ident.span,
             }
             .into())

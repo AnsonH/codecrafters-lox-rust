@@ -11,9 +11,9 @@ use miette::{Report, Result};
 
 use super::Parser;
 
-impl<'src> Parser<'src> {
+impl Parser<'_> {
     // TODO: Add docs
-    pub(super) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>> {
+    pub(super) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr> {
         let mut lhs_expr = match self.cur_kind() {
             kind if kind.is_literal() => self.parse_literal_expression()?,
             kind if kind.is_prefix_operator() => self.parse_prefix_expression()?,
@@ -65,7 +65,7 @@ impl<'src> Parser<'src> {
         Ok(lhs_expr)
     }
 
-    pub(super) fn parse_call_expression(&mut self, callee: Expr<'src>) -> Result<Expr<'src>> {
+    pub(super) fn parse_call_expression(&mut self, callee: Expr) -> Result<Expr> {
         let arguments = self.parse_expression_list(TokenKind::RightParen)?;
         if arguments.len() >= Self::MAX_CALL_ARGUMENTS {
             return Err(SyntaxError::TooManyCallArguments {
@@ -91,8 +91,8 @@ impl<'src> Parser<'src> {
     /// The cursor position (`self.token`) should be one token before the first
     /// element or the `end` token when it is called. For most cases this would
     /// be the starting bracket.
-    pub(super) fn parse_expression_list(&mut self, end: TokenKind) -> Result<Vec<Expr<'src>>> {
-        let mut list: Vec<Expr<'src>> = vec![];
+    pub(super) fn parse_expression_list(&mut self, end: TokenKind) -> Result<Vec<Expr>> {
+        let mut list: Vec<Expr> = vec![];
         if !self.is_peek_kind(end) {
             self.advance()?;
             loop {
@@ -106,7 +106,7 @@ impl<'src> Parser<'src> {
         Ok(list)
     }
 
-    pub(super) fn parse_grouping_expression(&mut self) -> Result<Expr<'src>> {
+    pub(super) fn parse_grouping_expression(&mut self) -> Result<Expr> {
         let start_span = self.cur_span();
         self.consume(TokenKind::LeftParen)?;
 
@@ -117,13 +117,13 @@ impl<'src> Parser<'src> {
         Ok(Expr::Grouping(Grouping { expression, span }.into()))
     }
 
-    pub(super) fn parse_identifier(&mut self) -> Result<Expr<'src>> {
-        let name = &self.source[self.cur_span()];
+    pub(super) fn parse_identifier(&mut self) -> Result<Expr> {
+        let name = self.source[self.cur_span()].to_owned();
         let span = self.cur_span();
         Ok(Expr::Identifier(Identifier { name, span }.into()))
     }
 
-    pub(super) fn parse_infix_expression(&mut self, left: Expr<'src>) -> Result<Expr<'src>> {
+    pub(super) fn parse_infix_expression(&mut self, left: Expr) -> Result<Expr> {
         let op_kind = self.cur_kind(); // Current token is the infix operator
         self.advance()?;
 
@@ -146,7 +146,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub(super) fn parse_literal_expression(&mut self) -> Result<Expr<'src>> {
+    pub(super) fn parse_literal_expression(&mut self) -> Result<Expr> {
         let span = self.cur_span();
         let value = match self.cur_kind() {
             TokenKind::Nil => Literal::Nil,
@@ -160,7 +160,7 @@ impl<'src> Parser<'src> {
             TokenKind::String => {
                 // The token span includes the `"` quotes, so exclude them
                 let span_without_quotes = self.cur_span().shrink(1);
-                let value = &self.source[span_without_quotes];
+                let value = self.source[span_without_quotes].to_owned();
                 Literal::String(value)
             }
             _ => unreachable!("unexpected literal kind: {}", self.cur_kind()),
@@ -168,14 +168,14 @@ impl<'src> Parser<'src> {
         Ok(Expr::Literal(LiteralExpr { value, span }.into()))
     }
 
-    pub(super) fn parse_postfix_expression(&mut self, left: Expr<'src>) -> Result<Expr<'src>> {
+    pub(super) fn parse_postfix_expression(&mut self, left: Expr) -> Result<Expr> {
         match self.cur_kind() {
             TokenKind::LeftParen => self.parse_call_expression(left),
             _ => unreachable!("unexpected postfix operator: {}", self.cur_kind()),
         }
     }
 
-    pub(super) fn parse_prefix_expression(&mut self) -> Result<Expr<'src>> {
+    pub(super) fn parse_prefix_expression(&mut self) -> Result<Expr> {
         let start_span = self.cur_span();
         let operator = match self.cur_kind() {
             TokenKind::Minus => UnaryOperator::UnaryMinus,

@@ -9,18 +9,18 @@ use super::expression::*;
 /// This enum's size is optimized by `Box`-ing all enum variants.
 /// See the [oxc AST guide](https://oxc.rs/docs/learn/parser_in_rust/ast.html#enum-size).
 #[derive(Debug, Clone, PartialEq)]
-pub enum Stmt<'src> {
-    BlockStatement(Box<BlockStatement<'src>>),
-    ExpressionStatement(Box<ExpressionStatement<'src>>),
-    ForStatement(Box<ForStatement<'src>>),
-    FunctionDeclaration(Box<FunctionDeclaration<'src>>),
-    IfStatement(Box<IfStatement<'src>>),
-    PrintStatement(Box<PrintStatement<'src>>),
-    VarStatement(Box<VarStatement<'src>>),
-    WhileStatement(Box<WhileStatement<'src>>),
+pub enum Stmt {
+    BlockStatement(Box<BlockStatement>),
+    ExpressionStatement(Box<ExpressionStatement>),
+    ForStatement(Box<ForStatement>),
+    FunctionDeclaration(Box<FunctionDeclaration>),
+    IfStatement(Box<IfStatement>),
+    PrintStatement(Box<PrintStatement>),
+    VarStatement(Box<VarStatement>),
+    WhileStatement(Box<WhileStatement>),
 }
 
-impl Stmt<'_> {
+impl Stmt {
     /// Accepts a visitor implementing [StmtVisitor] to visit the expression
     /// and perform operations based on the expression's type.
     pub fn accept<V: StmtVisitor>(&self, visitor: &mut V) -> V::Value {
@@ -75,15 +75,15 @@ pub trait StmtVisitor {
 
 /// Syntax: `{ <statement(s)> }`
 #[derive(Debug, Clone, PartialEq)]
-pub struct BlockStatement<'src> {
-    pub statements: Vec<Stmt<'src>>,
+pub struct BlockStatement {
+    pub statements: Vec<Stmt>,
     pub span: Span,
 }
 
 /// Syntax: `<expression>;`
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExpressionStatement<'src> {
-    pub expression: Expr<'src>,
+pub struct ExpressionStatement {
+    pub expression: Expr,
     pub span: Span,
 }
 
@@ -96,26 +96,26 @@ pub struct ExpressionStatement<'src> {
 /// implementation has a dedicated for-statement AST node, and the de-sugaring
 /// will happen during evaluation.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ForStatement<'src> {
-    pub init: Option<ForStatementInit<'src>>,
-    pub condition: Option<Expr<'src>>,
-    pub update: Option<Expr<'src>>,
-    pub body: Stmt<'src>,
+pub struct ForStatement {
+    pub init: Option<ForStatementInit>,
+    pub condition: Option<Expr>,
+    pub update: Option<Expr>,
+    pub body: Stmt,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ForStatementInit<'src> {
-    ExpressionStatement(Box<ExpressionStatement<'src>>),
-    VarStatement(Box<VarStatement<'src>>),
+pub enum ForStatementInit {
+    ExpressionStatement(Box<ExpressionStatement>),
+    VarStatement(Box<VarStatement>),
 }
 
 /// Syntax: `fun <identifier>( <parameter(s)> ) { <statement(s)> }`
 #[derive(Debug, Clone, PartialEq)]
-pub struct FunctionDeclaration<'src> {
-    pub name: Identifier<'src>,
-    pub parameters: Vec<Identifier<'src>>,
-    pub body: BlockStatement<'src>,
+pub struct FunctionDeclaration {
+    pub name: Identifier,
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
     pub span: Span,
 }
 
@@ -123,17 +123,17 @@ pub struct FunctionDeclaration<'src> {
 /// - `if ( <expression> ) <statement>`
 /// - `if ( <expression> ) <statement> else <statement>`
 #[derive(Debug, Clone, PartialEq)]
-pub struct IfStatement<'src> {
-    pub condition: Expr<'src>,
-    pub then_branch: Stmt<'src>,
-    pub else_branch: Option<Stmt<'src>>,
+pub struct IfStatement {
+    pub condition: Expr,
+    pub then_branch: Stmt,
+    pub else_branch: Option<Stmt>,
     pub span: Span,
 }
 
 /// Syntax: `print <expression>;`
 #[derive(Debug, Clone, PartialEq)]
-pub struct PrintStatement<'src> {
-    pub expression: Expr<'src>,
+pub struct PrintStatement {
+    pub expression: Expr,
     pub span: Span,
 }
 
@@ -141,16 +141,16 @@ pub struct PrintStatement<'src> {
 /// - `var <name>;`
 /// - `var <name> = <expression>;`
 #[derive(Debug, Clone, PartialEq)]
-pub struct VarStatement<'src> {
-    pub ident: Identifier<'src>,
-    pub initializer: Option<Expr<'src>>,
+pub struct VarStatement {
+    pub ident: Identifier,
+    pub initializer: Option<Expr>,
     pub span: Span,
 }
 
 /// Syntax: `while ( <expression> ) <statement>`
 #[derive(Debug, Clone, PartialEq)]
-pub struct WhileStatement<'src> {
-    pub condition: Expr<'src>,
-    pub body: Stmt<'src>,
+pub struct WhileStatement {
+    pub condition: Expr,
+    pub body: Stmt,
     pub span: Span,
 }

@@ -45,8 +45,8 @@ impl<'src> Parser<'src> {
     ///
     /// An `Ok` with [Program] if there are no syntax errors, or `Err` if there
     /// are any errors.
-    pub fn parse_program(mut self) -> miette::Result<Program<'src>> {
-        let mut body: Vec<Stmt<'src>> = vec![];
+    pub fn parse_program(mut self) -> miette::Result<Program> {
+        let mut body: Vec<Stmt> = vec![];
 
         self.advance()?;
         while !self.is_cur_kind(TokenKind::Eof) {
@@ -65,7 +65,7 @@ impl<'src> Parser<'src> {
     ///
     /// An `Ok` with [Expr] if there are no syntax errors, or `Err` if there are
     /// any errors.
-    pub fn parse_expression(mut self) -> miette::Result<Expr<'src>> {
+    pub fn parse_expression(mut self) -> miette::Result<Expr> {
         self.advance()?;
         if self.is_cur_kind(TokenKind::Eof) {
             return Ok(Expr::Literal(

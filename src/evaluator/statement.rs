@@ -84,7 +84,7 @@ impl StmtVisitor for Evaluator {
             .as_ref()
             .map_or(Ok(Object::Nil), |expr| expr.accept(self))?;
 
-        self.env.borrow_mut().define(stmt.ident.name.into(), value);
+        self.env.borrow_mut().define(stmt.ident.name.clone(), value);
         Ok(())
     }
 
@@ -121,7 +121,7 @@ mod tests {
     fn assert_env_val(result: &Result<Evaluator>, ident: &str, expected: &Object) {
         // Create dummy `Identifier` since `Environment::get()` accepts `&Identifier`
         let ident = Identifier {
-            name: ident,
+            name: ident.to_string(),
             span: (0, 0).into(),
         };
         let env = result.as_ref().expect("no RuntimeError").env.borrow();

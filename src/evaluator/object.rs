@@ -43,8 +43,8 @@ impl Display for Object {
     }
 }
 
-impl From<Literal<'_>> for Object {
-    fn from(value: Literal<'_>) -> Self {
+impl From<Literal> for Object {
+    fn from(value: Literal) -> Self {
         match value {
             Literal::Boolean(b) => Object::Boolean(b),
             Literal::Nil => Object::Nil,

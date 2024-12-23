@@ -9,17 +9,17 @@ use super::{BinaryOperator, UnaryOperator};
 /// This enum's size is optimized by `Box`-ing all enum variants.
 /// See the [oxc AST guide](https://oxc.rs/docs/learn/parser_in_rust/ast.html#enum-size).
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expr<'src> {
-    Assignment(Box<Assignment<'src>>),
-    Binary(Box<Binary<'src>>),
-    Call(Box<Call<'src>>),
-    Grouping(Box<Grouping<'src>>),
-    Identifier(Box<Identifier<'src>>),
-    Literal(Box<LiteralExpr<'src>>),
-    Unary(Box<Unary<'src>>),
+pub enum Expr {
+    Assignment(Box<Assignment>),
+    Binary(Box<Binary>),
+    Call(Box<Call>),
+    Grouping(Box<Grouping>),
+    Identifier(Box<Identifier>),
+    Literal(Box<LiteralExpr>),
+    Unary(Box<Unary>),
 }
 
-impl Expr<'_> {
+impl Expr {
     /// Accepts a visitor implementing [ExprVisitor] to visit the expression
     /// and perform operations based on the expression's type.
     pub fn accept<V: ExprVisitor>(&self, visitor: &mut V) -> V::Value {
@@ -72,62 +72,64 @@ pub trait ExprVisitor {
 
 /// Assignment expression (e.g. `foo = 10`)
 #[derive(Debug, Clone, PartialEq)]
-pub struct Assignment<'src> {
-    pub left: Expr<'src>,
-    pub right: Expr<'src>,
+pub struct Assignment {
+    pub left: Expr,
+    pub right: Expr,
     pub span: Span,
 }
 
 /// Binary expression (e.g. `1 + 2`)
 #[derive(Debug, Clone, PartialEq)]
-pub struct Binary<'src> {
-    pub left: Expr<'src>,
+pub struct Binary {
+    pub left: Expr,
     pub operator: BinaryOperator,
-    pub right: Expr<'src>,
+    pub right: Expr,
     pub span: Span,
 }
 
 /// Call expression (e.g. `clock()`)
 #[derive(Debug, Clone, PartialEq)]
-pub struct Call<'src> {
-    pub callee: Expr<'src>,
-    pub arguments: Vec<Expr<'src>>,
+pub struct Call {
+    pub callee: Expr,
+    pub arguments: Vec<Expr>,
     pub span: Span,
 }
 
 /// Grouped expression using parenthesis (e.g. `("foo")`)
 #[derive(Debug, Clone, PartialEq)]
-pub struct Grouping<'src> {
-    pub expression: Expr<'src>,
+pub struct Grouping {
+    pub expression: Expr,
     pub span: Span,
 }
 
 /// Identifier (e.g. variable, function name)
 #[derive(Debug, Clone, PartialEq)]
-pub struct Identifier<'src> {
-    pub name: &'src str,
+pub struct Identifier {
+    pub name: String,
     pub span: Span,
 }
 
 /// Literal expression
 #[derive(Debug, Clone, PartialEq)]
-pub struct LiteralExpr<'src> {
-    pub value: Literal<'src>,
+pub struct LiteralExpr {
+    pub value: Literal,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Literal<'src> {
+pub enum Literal {
     Boolean(bool),
     Nil,
     Number(f64),
-    String(&'src str),
+    // Note: We purposely use `String` over `&'src str` to avoid introducing
+    // lifetimes everywhere.
+    String(String),
 }
 
 /// Unary expression (e.g. `-5`)
 #[derive(Debug, Clone, PartialEq)]
-pub struct Unary<'src> {
+pub struct Unary {
     pub operator: UnaryOperator,
-    pub right: Expr<'src>,
+    pub right: Expr,
     pub span: Span,
 }

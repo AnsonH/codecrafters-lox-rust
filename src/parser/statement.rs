@@ -9,8 +9,8 @@ use crate::{
 
 use super::Parser;
 
-impl<'src> Parser<'src> {
-    pub(super) fn parse_declaration_statement(&mut self) -> Result<Stmt<'src>> {
+impl Parser<'_> {
+    pub(super) fn parse_declaration_statement(&mut self) -> Result<Stmt> {
         match self.cur_kind() {
             TokenKind::Class => todo!(),
             TokenKind::Fun => self.parse_function_declaration(),
@@ -19,7 +19,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub(super) fn parse_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_statement(&mut self) -> Result<Stmt> {
         match self.cur_kind() {
             TokenKind::For => self.parse_for_statement(),
             TokenKind::If => self.parse_if_statement(),
@@ -30,8 +30,8 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub(super) fn parse_block_statement(&mut self) -> Result<Stmt<'src>> {
-        let mut statements: Vec<Stmt<'src>> = vec![];
+    pub(super) fn parse_block_statement(&mut self) -> Result<Stmt> {
+        let mut statements: Vec<Stmt> = vec![];
 
         let start_span = self.cur_span();
         self.consume(TokenKind::LeftBrace)?;
@@ -50,7 +50,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_expression_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_expression_statement(&mut self) -> Result<Stmt> {
         let expression = self.parse_expr(0)?;
         self.expect_peek(TokenKind::Semicolon)?;
 
@@ -60,7 +60,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_for_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_for_statement(&mut self) -> Result<Stmt> {
         let start_span = self.cur_span();
         self.consume(TokenKind::For)?;
         self.consume(TokenKind::LeftParen)?;
@@ -121,7 +121,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_function_declaration(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_function_declaration(&mut self) -> Result<Stmt> {
         let start_span = self.cur_span();
         self.consume(TokenKind::Fun)?;
 
@@ -136,7 +136,7 @@ impl<'src> Parser<'src> {
 
         self.expect_peek(TokenKind::LeftParen)?;
 
-        let mut parameters: Vec<Identifier<'src>> = vec![];
+        let mut parameters: Vec<Identifier> = vec![];
         if !self.is_peek_kind(TokenKind::RightParen) {
             self.advance()?;
             loop {
@@ -178,7 +178,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_if_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_if_statement(&mut self) -> Result<Stmt> {
         let start_span = self.cur_span();
         self.consume(TokenKind::If)?;
 
@@ -206,7 +206,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_print_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_print_statement(&mut self) -> Result<Stmt> {
         let start_span = self.cur_span();
         self.consume(TokenKind::Print)?;
 
@@ -219,7 +219,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_var_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_var_statement(&mut self) -> Result<Stmt> {
         let start_span = self.cur_span();
         self.consume(TokenKind::Var)?;
 
@@ -249,7 +249,7 @@ impl<'src> Parser<'src> {
         ))
     }
 
-    pub(super) fn parse_while_statement(&mut self) -> Result<Stmt<'src>> {
+    pub(super) fn parse_while_statement(&mut self) -> Result<Stmt> {
         let start_span = self.cur_span();
         self.consume(TokenKind::While)?;
 

@@ -95,12 +95,12 @@ impl StmtVisitor for AstPrefixPrinter {
     }
 
     fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value {
-        let mut items: Vec<String> = vec!["fun".into(), stmt.name.name.into()];
+        let mut items: Vec<String> = vec!["fun".into(), stmt.name.name.clone()];
 
         let parameters = stmt
             .parameters
             .iter()
-            .map(|p| p.name)
+            .map(|p| p.name.as_str())
             .collect::<Vec<&str>>()
             .join(" ");
         items.push(format!("({parameters})"));
@@ -167,7 +167,7 @@ impl ExprVisitor for AstPrefixPrinter {
     }
 
     fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> Self::Value {
-        match expr.value {
+        match &expr.value {
             Literal::Boolean(b) => b.to_string(),
             Literal::Nil => "nil".to_string(),
             Literal::Number(n) => {
