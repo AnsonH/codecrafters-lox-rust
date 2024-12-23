@@ -43,9 +43,28 @@ pub enum SyntaxError {
         span: Span,
     },
 
+    #[error("Can't have more than {max_count} parameters.")]
+    TooManyParameters {
+        max_count: usize,
+        #[label("here")]
+        span: Span,
+    },
+
     #[error("Expect '}}' after block.")]
     UnclosedBlock {
         #[label("this block is unclosed")]
+        span: Span,
+    },
+
+    #[error("Expect function name.")]
+    UnexpectedFunctionName {
+        #[label("invalid name")]
+        span: Span,
+    },
+
+    #[error("Expect parameter name.")]
+    UnexpectedParameterName {
+        #[label("invalid name")]
         span: Span,
     },
 
@@ -143,7 +162,10 @@ impl SyntaxError {
             Self::MissingVariableName { span, .. } => *span,
             Self::SingleTokenError { span, .. } => *span,
             Self::TooManyCallArguments { span, .. } => *span,
+            Self::TooManyParameters { span, .. } => *span,
             Self::UnclosedBlock { span, .. } => *span,
+            Self::UnexpectedFunctionName { span, .. } => *span,
+            Self::UnexpectedParameterName { span, .. } => *span,
             Self::UnexpectedToken { span, .. } => *span,
             Self::UnterminatedStringError { span, .. } => *span,
         }

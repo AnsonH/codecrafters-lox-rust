@@ -94,6 +94,21 @@ impl StmtVisitor for AstPrefixPrinter {
         format!("({})", items.join(" "))
     }
 
+    fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value {
+        let mut items: Vec<String> = vec!["fun".into(), stmt.name.name.into()];
+
+        let parameters = stmt
+            .parameters
+            .iter()
+            .map(|p| p.name)
+            .collect::<Vec<&str>>()
+            .join(" ");
+        items.push(format!("({parameters})"));
+        items.push(self.visit_block_stmt(&stmt.body));
+
+        format!("({})", items.join(" "))
+    }
+
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value {
         let condition = stmt.condition.accept(self);
         let then_branch = stmt.then_branch.accept(self);

@@ -60,6 +60,10 @@ impl StmtVisitor for Evaluator {
         Ok(())
     }
 
+    fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value {
+        todo!()
+    }
+
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value {
         if stmt.condition.accept(self)?.is_truthy() {
             stmt.then_branch.accept(self)?;

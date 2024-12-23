@@ -1,9 +1,10 @@
 use miette::Result;
 
 use crate::{
-    ast::{statement::*, Expr, Stmt},
+    ast::{expression::Identifier, statement::*, Expr, Stmt},
     error::SyntaxError,
     token::TokenKind,
+    unwrap_ast_node,
 };
 
 use super::Parser;
@@ -12,7 +13,7 @@ impl<'src> Parser<'src> {
     pub(super) fn parse_declaration_statement(&mut self) -> Result<Stmt<'src>> {
         match self.cur_kind() {
             TokenKind::Class => todo!(),
-            TokenKind::Fun => todo!(),
+            TokenKind::Fun => self.parse_function_declaration(),
             TokenKind::Var => self.parse_var_statement(),
             _ => self.parse_statement(),
         }
@@ -70,18 +71,16 @@ impl<'src> Parser<'src> {
                 None
             }
             TokenKind::Var => {
-                let Stmt::VarStatement(var_stmt) = self.parse_var_statement()? else {
-                    unreachable!("parse_var_statement returns Stmt::VarStatement")
-                };
+                let var_stmt = unwrap_ast_node!(self.parse_var_statement()?, Stmt::VarStatement);
                 // No need to consume `;` since it's done by `parse_var_statement`
                 self.advance()?; // Move to first token after `;`
                 Some(ForStatementInit::VarStatement(var_stmt))
             }
             _ => {
-                let Stmt::ExpressionStatement(expr_stmt) = self.parse_expression_statement()?
-                else {
-                    unreachable!("parse_expression_statement returns Stmt::ExpressionStatement")
-                };
+                let expr_stmt = unwrap_ast_node!(
+                    self.parse_expression_statement()?,
+                    Stmt::ExpressionStatement
+                );
                 self.advance()?;
                 Some(ForStatementInit::ExpressionStatement(expr_stmt))
             }
@@ -115,6 +114,63 @@ impl<'src> Parser<'src> {
                 init,
                 condition,
                 update,
+                body,
+                span,
+            }
+            .into(),
+        ))
+    }
+
+    pub(super) fn parse_function_declaration(&mut self) -> Result<Stmt<'src>> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::Fun)?;
+
+        if !self.is_cur_kind(TokenKind::Identifier) {
+            return Err(SyntaxError::UnexpectedFunctionName {
+                span: self.cur_span(),
+            }
+            .into());
+        }
+        let name_token = self.cur_token();
+        let name = *unwrap_ast_node!(self.parse_identifier()?, Expr::Identifier);
+
+        self.expect_peek(TokenKind::LeftParen)?;
+
+        let mut parameters: Vec<Identifier<'src>> = vec![];
+        if !self.is_peek_kind(TokenKind::RightParen) {
+            self.advance()?;
+            loop {
+                if parameters.len() >= Self::MAX_FUNCTION_PARAMETERS {
+                    return Err(SyntaxError::TooManyParameters {
+                        max_count: Self::MAX_FUNCTION_PARAMETERS,
+                        span: name_token.span,
+                    }
+                    .into());
+                }
+                if !self.is_cur_kind(TokenKind::Identifier) {
+                    return Err(SyntaxError::UnexpectedParameterName {
+                        span: self.cur_span(),
+                    }
+                    .into());
+                }
+
+                let param = unwrap_ast_node!(self.parse_identifier()?, Expr::Identifier);
+                parameters.push(*param);
+                if !self.try_consume_peek(TokenKind::Comma)? {
+                    break;
+                }
+            }
+        }
+        self.expect_peek(TokenKind::RightParen)?;
+
+        self.expect_peek(TokenKind::LeftBrace)?;
+        let body = *unwrap_ast_node!(self.parse_block_statement()?, Stmt::BlockStatement);
+
+        let span = self.cur_span().merge(&start_span);
+        Ok(Stmt::FunctionDeclaration(
+            FunctionDeclaration {
+                name,
+                parameters,
                 body,
                 span,
             }
@@ -173,9 +229,7 @@ impl<'src> Parser<'src> {
             }
             .into());
         }
-        let Expr::Identifier(name) = self.parse_identifier()? else {
-            unreachable!()
-        };
+        let name = unwrap_ast_node!(self.parse_identifier()?, Expr::Identifier);
 
         let initializer = if self.try_consume_peek(TokenKind::Equal)? {
             Some(self.parse_expr(0)?)
@@ -399,5 +453,29 @@ mod tests {
             &["(for (assign x (+ x 1.0)) (print x))"],
         );
         assert("for (;;) print x;", &["(for (print x))"]);
+    }
+
+    #[test]
+    fn test_function_declaration() {
+        assert(r"fun foo() {}", &["(fun foo () (begin))"]);
+        assert(r"fun foo(a) {}", &["(fun foo (a) (begin))"]);
+        assert(r"fun foo(a, b, c) {}", &["(fun foo (a b c) (begin))"]);
+        assert(
+            r"fun foo(a, b, c) { print a; print b; }",
+            &["(fun foo (a b c) (begin (print a) (print b)))"],
+        );
+
+        assert_error(
+            r"fun 10() {}",
+            SyntaxError::UnexpectedFunctionName {
+                span: Span::new(4, 6),
+            },
+        );
+        assert_error(
+            r"fun foo(a, 10) {}",
+            SyntaxError::UnexpectedParameterName {
+                span: Span::new(11, 13),
+            },
+        );
     }
 }

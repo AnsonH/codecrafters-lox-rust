@@ -24,6 +24,13 @@ pub struct Parser<'src> {
 }
 
 impl<'src> Parser<'src> {
+    /// Having a maximum argument count will simplify bytecode interpreter.
+    ///
+    /// See https://craftinginterpreters.com/functions.html#maximum-argument-counts
+    const MAX_CALL_ARGUMENTS: usize = 255;
+
+    const MAX_FUNCTION_PARAMETERS: usize = 255;
+
     pub fn new(source: &'src str) -> Self {
         Self {
             source,

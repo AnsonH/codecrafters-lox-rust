@@ -12,8 +12,6 @@ use miette::{Report, Result};
 use super::Parser;
 
 impl<'src> Parser<'src> {
-    const MAX_CALL_ARGUMENTS: usize = 255;
-
     // TODO: Add docs
     pub(super) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr<'src>> {
         let mut lhs_expr = match self.cur_kind() {
@@ -69,9 +67,9 @@ impl<'src> Parser<'src> {
 
     pub(super) fn parse_call_expression(&mut self, callee: Expr<'src>) -> Result<Expr<'src>> {
         let arguments = self.parse_expression_list(TokenKind::RightParen)?;
-        if arguments.len() >= Parser::MAX_CALL_ARGUMENTS {
+        if arguments.len() >= Self::MAX_CALL_ARGUMENTS {
             return Err(SyntaxError::TooManyCallArguments {
-                max_count: Parser::MAX_CALL_ARGUMENTS,
+                max_count: Self::MAX_CALL_ARGUMENTS,
                 span: callee.span(),
             }
             .into());

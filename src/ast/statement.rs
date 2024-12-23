@@ -13,6 +13,7 @@ pub enum Stmt<'src> {
     BlockStatement(Box<BlockStatement<'src>>),
     ExpressionStatement(Box<ExpressionStatement<'src>>),
     ForStatement(Box<ForStatement<'src>>),
+    FunctionDeclaration(Box<FunctionDeclaration<'src>>),
     IfStatement(Box<IfStatement<'src>>),
     PrintStatement(Box<PrintStatement<'src>>),
     VarStatement(Box<VarStatement<'src>>),
@@ -27,6 +28,7 @@ impl Stmt<'_> {
             Stmt::BlockStatement(stmt) => visitor.visit_block_stmt(stmt),
             Stmt::ExpressionStatement(stmt) => visitor.visit_expression_stmt(stmt),
             Stmt::ForStatement(stmt) => visitor.visit_for_stmt(stmt),
+            Stmt::FunctionDeclaration(stmt) => visitor.visit_function_declaration(stmt),
             Stmt::IfStatement(stmt) => visitor.visit_if_stmt(stmt),
             Stmt::PrintStatement(stmt) => visitor.visit_print_stmt(stmt),
             Stmt::VarStatement(stmt) => visitor.visit_var_stmt(stmt),
@@ -40,6 +42,7 @@ impl Stmt<'_> {
             Self::BlockStatement(s) => s.span,
             Self::ExpressionStatement(s) => s.span,
             Self::ForStatement(s) => s.span,
+            Self::FunctionDeclaration(s) => s.span,
             Self::IfStatement(s) => s.span,
             Self::PrintStatement(s) => s.span,
             Self::VarStatement(s) => s.span,
@@ -63,6 +66,7 @@ pub trait StmtVisitor {
     fn visit_block_stmt(&mut self, stmt: &BlockStatement) -> Self::Value;
     fn visit_expression_stmt(&mut self, stmt: &ExpressionStatement) -> Self::Value;
     fn visit_for_stmt(&mut self, stmt: &ForStatement) -> Self::Value;
+    fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value;
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value;
     fn visit_print_stmt(&mut self, stmt: &PrintStatement) -> Self::Value;
     fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value;
@@ -104,6 +108,15 @@ pub struct ForStatement<'src> {
 pub enum ForStatementInit<'src> {
     ExpressionStatement(Box<ExpressionStatement<'src>>),
     VarStatement(Box<VarStatement<'src>>),
+}
+
+/// Syntax: `fun <identifier>( <parameter(s)> ) { <statement(s)> }`
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionDeclaration<'src> {
+    pub name: Identifier<'src>,
+    pub parameters: Vec<Identifier<'src>>,
+    pub body: BlockStatement<'src>,
+    pub span: Span,
 }
 
 /// Syntax:
