@@ -16,6 +16,7 @@ pub enum Stmt {
     FunctionDeclaration(Box<FunctionDeclaration>),
     IfStatement(Box<IfStatement>),
     PrintStatement(Box<PrintStatement>),
+    ReturnStatement(Box<ReturnStatement>),
     VarStatement(Box<VarStatement>),
     WhileStatement(Box<WhileStatement>),
 }
@@ -31,6 +32,7 @@ impl Stmt {
             Stmt::FunctionDeclaration(stmt) => visitor.visit_function_declaration(stmt),
             Stmt::IfStatement(stmt) => visitor.visit_if_stmt(stmt),
             Stmt::PrintStatement(stmt) => visitor.visit_print_stmt(stmt),
+            Stmt::ReturnStatement(stmt) => visitor.visit_return_stmt(stmt),
             Stmt::VarStatement(stmt) => visitor.visit_var_stmt(stmt),
             Stmt::WhileStatement(stmt) => visitor.visit_while_stmt(stmt),
         }
@@ -45,6 +47,7 @@ impl Stmt {
             Self::FunctionDeclaration(s) => s.span,
             Self::IfStatement(s) => s.span,
             Self::PrintStatement(s) => s.span,
+            Self::ReturnStatement(s) => s.span,
             Self::VarStatement(s) => s.span,
             Self::WhileStatement(s) => s.span,
         }
@@ -69,6 +72,7 @@ pub trait StmtVisitor {
     fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value;
     fn visit_if_stmt(&mut self, stmt: &IfStatement) -> Self::Value;
     fn visit_print_stmt(&mut self, stmt: &PrintStatement) -> Self::Value;
+    fn visit_return_stmt(&mut self, stmt: &ReturnStatement) -> Self::Value;
     fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value;
     fn visit_while_stmt(&mut self, stmt: &WhileStatement) -> Self::Value;
 }
@@ -134,6 +138,13 @@ pub struct IfStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintStatement {
     pub expression: Expr,
+    pub span: Span,
+}
+
+/// Syntax: `return <expression?>;`
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReturnStatement {
+    pub expression: Option<Expr>,
     pub span: Span,
 }
 

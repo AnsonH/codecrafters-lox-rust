@@ -3,12 +3,15 @@ pub(super) mod user_function;
 
 pub use self::native_function::register_native_functions;
 
+pub(super) use self::native_function::NativeFunction;
+pub(super) use self::user_function::{FunctionReturn, UserFunction};
+
+/////////////////////////////////
+
 use std::fmt::Display;
 
 use miette::Result;
-use user_function::UserFunction;
 
-use self::native_function::NativeFunction;
 use super::{object::Object, Evaluator};
 
 #[derive(Debug, Clone, PartialEq)]

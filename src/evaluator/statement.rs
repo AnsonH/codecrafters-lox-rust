@@ -5,7 +5,10 @@ use miette::Result;
 use crate::ast::statement::*;
 
 use super::{
-    environment::Environment, function::user_function::UserFunction, object::Object, Evaluator,
+    environment::Environment,
+    function::{user_function::UserFunction, FunctionReturn},
+    object::Object,
+    Evaluator,
 };
 
 impl StmtVisitor for Evaluator {
@@ -82,6 +85,18 @@ impl StmtVisitor for Evaluator {
     fn visit_print_stmt(&mut self, stmt: &PrintStatement) -> Self::Value {
         println!("{}", stmt.expression.accept(self)?);
         Ok(())
+    }
+
+    fn visit_return_stmt(&mut self, stmt: &ReturnStatement) -> Self::Value {
+        let value = stmt
+            .expression
+            .as_ref()
+            .map_or(Ok(Object::Nil), |expr| expr.accept(self))?;
+
+        // We return `Err` to halt function execution, and the `?` operator will
+        // bubble up the return value to `UserFunction::call()`
+        // FIXME: Casting into miette::Report causes too much overhead
+        Err(FunctionReturn(value).into())
     }
 
     fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value {

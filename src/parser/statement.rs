@@ -25,6 +25,7 @@ impl Parser<'_> {
             TokenKind::If => self.parse_if_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::Print => self.parse_print_statement(),
+            TokenKind::Return => self.parse_return_statement(),
             TokenKind::While => self.parse_while_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -216,6 +217,24 @@ impl Parser<'_> {
         let span = self.cur_span().merge(&start_span);
         Ok(Stmt::PrintStatement(
             PrintStatement { expression, span }.into(),
+        ))
+    }
+
+    pub(super) fn parse_return_statement(&mut self) -> Result<Stmt> {
+        let start_span = self.cur_span();
+        self.consume(TokenKind::Return)?;
+
+        let expression = if self.is_cur_kind(TokenKind::Semicolon) {
+            None
+        } else {
+            let expr = self.parse_expr(0)?;
+            self.expect_peek(TokenKind::Semicolon)?;
+            Some(expr)
+        };
+
+        let span = self.cur_span().merge(&start_span);
+        Ok(Stmt::ReturnStatement(
+            ReturnStatement { expression, span }.into(),
         ))
     }
 
@@ -477,5 +496,11 @@ mod tests {
                 span: Span::new(11, 13),
             },
         );
+    }
+
+    #[test]
+    fn test_return_statement() {
+        assert("return;", &["(return)"]);
+        assert("return 1 + 2 * 3;", &["(return (+ 1.0 (* 2.0 3.0)))"]);
     }
 }

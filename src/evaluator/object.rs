@@ -12,7 +12,7 @@ pub enum Object {
     #[default]
     Nil,
     Boolean(bool),
-    Function(Function),
+    Function(Function), // TODO: Wrap with Box/Rc to reduce Object size?
     Number(f64),
     String(String),
 }

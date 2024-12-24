@@ -123,6 +123,13 @@ impl StmtVisitor for AstPrefixPrinter {
         self.parenthesize_expr("print", vec![&stmt.expression])
     }
 
+    fn visit_return_stmt(&mut self, stmt: &ReturnStatement) -> Self::Value {
+        self.parenthesize_expr(
+            "return",
+            stmt.expression.as_ref().map_or(vec![], |expr| vec![&expr]),
+        )
+    }
+
     fn visit_var_stmt(&mut self, stmt: &VarStatement) -> Self::Value {
         let mut output = format!("(var {}", stmt.ident.name);
         if let Some(initializer) = &stmt.initializer {
