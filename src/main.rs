@@ -25,15 +25,6 @@ enum ExitCode {
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-
-    /// Error formatting.
-    #[arg(
-            long = "error-format",
-            value_name = "FORMAT",
-            default_value_t = ErrorFormat::Pretty,
-            value_enum
-        )]
-    error_format: ErrorFormat,
 }
 
 #[derive(Subcommand)]
@@ -42,6 +33,15 @@ enum Commands {
     Tokenize {
         /// Path to a `.lox` file.
         filename: PathBuf,
+
+        /// Error formatting.
+        #[arg(
+            long = "error-format",
+            value_name = "FORMAT",
+            default_value_t = ErrorFormat::Pretty,
+            value_enum
+        )]
+        error_format: ErrorFormat,
     },
     /// Parses an expression and prints out a braces-format AST.
     Parse {
@@ -71,7 +71,10 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Tokenize { filename } => {
+        Commands::Tokenize {
+            filename,
+            error_format,
+        } => {
             let source = read_file(filename)?;
             let source = source.inner();
 
@@ -91,7 +94,7 @@ fn main() -> Result<()> {
             }
 
             for error in errors {
-                error.print_error(source, &cli.error_format);
+                error.print_error(source, error_format);
             }
             for token in tokens {
                 println!("{}", token.to_string(source));
