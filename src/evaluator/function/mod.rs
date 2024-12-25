@@ -4,7 +4,7 @@ pub(super) mod user_function;
 pub use self::native_function::register_native_functions;
 
 pub(super) use self::native_function::NativeFunction;
-pub(super) use self::user_function::{FunctionReturn, UserFunction};
+pub(super) use self::user_function::UserFunction;
 
 /////////////////////////////////
 
