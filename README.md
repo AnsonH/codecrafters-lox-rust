@@ -1,51 +1,54 @@
-[![progress-banner](https://backend.codecrafters.io/progress/interpreter/4806252b-d788-449c-92bb-61de687bb767)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# codecrafters-lox-rust
 
-This is a starting point for Rust solutions to the
-["Build your own Interpreter" Challenge](https://app.codecrafters.io/courses/interpreter/overview).
+Rust implementation of [CodeCrafters's "Build your own Interpreter" Challenge](https://app.codecrafters.io/courses/interpreter/overview).
 
 This challenge follows the book
-[Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom.
+[Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom. It involves building an interpreter for [Lox](https://craftinginterpreters.com/the-lox-language.html), a simple scripting language.
 
-In this challenge you'll build an interpreter for
-[Lox](https://craftinginterpreters.com/the-lox-language.html), a simple
-scripting language. Along the way, you'll learn about tokenization, ASTs,
-tree-walk interpreters and more.
+> [!NOTE]
+> As of now (2024 Dec), the challenge only supports up to ["Chapter 10 - Functions"](https://craftinginterpreters.com/functions.html). Hence, this solution have not implemented Chapters 11~13 (Resolving and Binding, Classes, Inheritance).
 
-Before starting this challenge, make sure you've read the "Welcome" part of the
-book that contains these chapters:
+## Running
 
-- [Introduction](https://craftinginterpreters.com/introduction.html) (chapter 1)
-- [A Map of the Territory](https://craftinginterpreters.com/a-map-of-the-territory.html)
-  (chapter 2)
-- [The Lox Language](https://craftinginterpreters.com/the-lox-language.html)
-  (chapter 3)
-
-These chapters don't involve writing code, so they won't be covered in this
-challenge. This challenge will start from chapter 4,
-[Scanning](https://craftinginterpreters.com/scanning.html).
-
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
-# Passing the first stage
-
-The entry point for your program is in `src/main.rs`. Study and uncomment the
-relevant code, and push your changes to pass the first stage:
+To run the [Hello World program](./examples/hello_world.lox):
 
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+cargo run -- run examples/hello-world.lox
 ```
 
-Time to move on to the next stage!
+To learn more about the CLI:
 
-# Stage 2 & beyond
+```sh
+cargo run -- --help
+```
 
-Note: This section is for stages 2 and beyond.
+## What's done differently?
 
-1. Ensure you have `cargo (1.82)` installed locally
-2. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-3. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+This implementation deviates from the book in a few ways:
+
+- The parser uses [Pratt Parsing](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html) instead of [Recursive Decent](https://craftinginterpreters.com/parsing-expressions.html#recursive-descent-parsing) to parse expressions.
+- Abstract Syntax Tree (AST):
+  - Some AST nodes have slightly different names
+  - Each AST node stores a `Span` that records the start and end positions of the source code.
+- Evaluation:
+  - [For-loop desugaring](https://craftinginterpreters.com/control-flow.html#desugaring) is done at evaluation stage instead of parsing stage, so there is an AST node for for-loops.
+  - Function call returns are handled using Rust's [`ControlFlow`](https://doc.rust-lang.org/beta/std/ops/enum.ControlFlow.html) instead of ["try-catch" approach](https://craftinginterpreters.com/functions.html#returning-from-calls).
+- Error handling:
+  - Errors are represented as enums instead of strings. A drawback is that the error messages are generic and does not match the book.
+  - [miette](https://github.com/zkat/miette) is used for pretty diagnostic printing. Only the `tokenize` command returns error messages in the book's format in order to pass CodeCrafters' tests. 
+    
+     ![syntax-error-demo](./docs/syntax-error-demo.jpg)
+
+## Inspirations
+
+These implementations greatly influenced the implementation:
+
+- [Implementing a Lox interpreter in Rust - Jon Gjengset](https://youtu.be/mNOLaw-_Buc?si=9zw3pYnsTSI6x4PI)
+- [Darksecond/lox](https://github.com/Darksecond/lox)
+- [jeschkies/lox-rs](https://github.com/jeschkies/lox-rs)
+- [sagark4/rlox_ast_walk](https://github.com/sagark4/rlox_ast_walk)
+- [rami3l/dolores](https://github.com/rami3l/dolores)
+
+Also huge thanks to [Oxidation Compiler](https://oxc.rs/) for their resources:
+- [JavaScript Parser in Rust](https://oxc.rs/docs/learn/parser_in_rust/intro.html)
+- [Performance Optimization Tricks](https://oxc.rs/docs/learn/performance.html)

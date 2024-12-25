@@ -7,7 +7,7 @@ use super::Parser;
 impl Parser<'_> {
     pub(super) fn parse_declaration_statement(&mut self) -> Result<Stmt> {
         match self.cur_kind() {
-            TokenKind::Class => todo!(),
+            TokenKind::Class => todo!("parsing 'class' is not implemented"),
             TokenKind::Fun => self.parse_function_declaration(),
             TokenKind::Var => self.parse_var_statement(),
             _ => self.parse_statement(),
