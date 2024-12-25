@@ -10,24 +10,28 @@ use crate::{
 use super::Function;
 
 /// A user-defined function.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct UserFunction {
     declaration: FunctionDeclaration,
+    closure: Rc<RefCell<Environment>>,
 }
 
 impl UserFunction {
-    pub fn new(declaration: FunctionDeclaration) -> Self {
-        Self { declaration }
+    pub fn new(declaration: FunctionDeclaration, closure: Rc<RefCell<Environment>>) -> Self {
+        Self {
+            declaration,
+            closure,
+        }
     }
 
     #[inline]
-    pub fn new_obj(declaration: FunctionDeclaration) -> Object {
-        Object::Function(Function::User(Self::new(declaration)))
+    pub fn new_obj(declaration: FunctionDeclaration, closure: Rc<RefCell<Environment>>) -> Object {
+        Object::Function(Function::User(Self::new(declaration, closure)))
     }
 
     /// Entry point for calling a user-defined function.
     pub(super) fn call(&self, evaluator: &mut Evaluator, args: &[Object]) -> Result<Object> {
-        let env = Rc::new(RefCell::new(Environment::from(&evaluator.env)));
+        let env = Rc::new(RefCell::new(Environment::from(&self.closure)));
 
         for (param, arg) in self.declaration.parameters.iter().zip(args.iter()) {
             env.borrow_mut().define(param.name.clone(), arg.clone());

@@ -81,7 +81,8 @@ impl StmtVisitor for Evaluator {
     }
 
     fn visit_function_declaration(&mut self, stmt: &FunctionDeclaration) -> Self::Value {
-        let function = UserFunction::new_obj(stmt.clone());
+        let closure_env = Rc::clone(&self.env);
+        let function = UserFunction::new_obj(stmt.clone(), closure_env);
         self.env
             .borrow_mut()
             .define(stmt.name.name.clone(), function);
