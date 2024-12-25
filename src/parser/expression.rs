@@ -12,7 +12,9 @@ use miette::{Report, Result};
 use super::Parser;
 
 impl Parser<'_> {
-    // TODO: Add docs
+    /// Parses an expression with [Pratt Parsing][1].
+    ///
+    /// [1]: https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     pub(super) fn parse_expr(&mut self, min_precedence: u8) -> Result<Expr> {
         let mut lhs_expr = match self.cur_kind() {
             kind if kind.is_literal() => self.parse_literal_expression()?,
@@ -50,14 +52,22 @@ impl Parser<'_> {
                 continue;
             }
 
-            let Some((lhs_prec, _)) = infix_precedence(peek_kind) else {
+            let Some((peek_lhs_prec, _)) = infix_precedence(peek_kind) else {
                 break; // peek token is not infix operator
             };
 
-            if lhs_prec < min_precedence {
+            //                      ╭─▶ current token
+            //              A   +   B    *    C
+            // precedence:    3   4   12   13
+            //                    ┬   ─┬
+            //   min_precedence ◀─╯    ╰─▶ peek_lhs_prec
+            //
+            // If this condition is:
+            // - true : `(A + B) * C`
+            // - false: `A + (B * C)`
+            if peek_lhs_prec < min_precedence {
                 break;
             }
-
             self.advance()?; // Move to infix operator
             lhs_expr = self.parse_infix_expression(lhs_expr)?;
         }

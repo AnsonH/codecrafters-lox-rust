@@ -56,7 +56,6 @@ impl From<TokenKind> for BinaryOperator {
     }
 }
 
-// TODO: Replace with enum
 /// Gets the right precedence value of a prefix operator.
 pub(crate) fn prefix_precedence(op: UnaryOperator) -> ((), u8) {
     match op {
