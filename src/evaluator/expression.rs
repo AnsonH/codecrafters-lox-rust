@@ -1,9 +1,6 @@
 use miette::Result;
 
-use crate::{
-    ast::{expression::*, BinaryOperator, UnaryOperator},
-    error::RuntimeError,
-};
+use crate::{ast::*, error::RuntimeError};
 
 use super::{object::Object, Evaluator};
 

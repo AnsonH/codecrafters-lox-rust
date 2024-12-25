@@ -6,7 +6,7 @@ mod statement;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{expression::LiteralExpr, Expr, Literal, Program, Stmt},
+    ast::{Expr, Literal, LiteralExpr, Program, Stmt},
     error::SyntaxError,
     lexer::Lexer,
     span::Span,

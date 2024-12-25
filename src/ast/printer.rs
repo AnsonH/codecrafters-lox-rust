@@ -1,4 +1,4 @@
-use super::{expression::*, statement::*, Expr, Literal, Program};
+use super::*;
 
 /// Prints AST in a [prefix notation](https://en.wikipedia.org/wiki/Polish_notation)
 /// format that matches the [official Lox test specs](https://github.com/munificent/craftinginterpreters/blob/master/test/expressions/parse.lox).

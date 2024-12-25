@@ -5,7 +5,7 @@
 ///
 /// # Example
 /// ```
-/// use rust_lox::{ast::{expression::Identifier, Expr}, unwrap_ast_node};
+/// use rust_lox::{ast::{Expr, Identifier}, unwrap_ast_node};
 ///
 /// let expr = Expr::Identifier(Box::new(Identifier {
 ///     name: "foo".to_string(),
@@ -28,7 +28,7 @@ macro_rules! unwrap_ast_node {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{expression::Identifier, statement::PrintStatement, Expr, Stmt},
+        ast::{Expr, Identifier, PrintStatement, Stmt},
         span::Span,
     };
 

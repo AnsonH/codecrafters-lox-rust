@@ -3,7 +3,7 @@ use std::{cell::RefCell, fmt::Display, ops::ControlFlow, rc::Rc};
 use miette::Result;
 
 use crate::{
-    ast::statement::FunctionDeclaration,
+    ast::FunctionDeclaration,
     evaluator::{environment::Environment, object::Object, Evaluator},
 };
 

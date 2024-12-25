@@ -1,11 +1,6 @@
 use miette::Result;
 
-use crate::{
-    ast::{expression::Identifier, statement::*, Expr, Stmt},
-    error::SyntaxError,
-    token::TokenKind,
-    unwrap_ast_node,
-};
+use crate::{ast::*, error::SyntaxError, token::TokenKind, unwrap_ast_node};
 
 use super::Parser;
 

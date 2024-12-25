@@ -136,7 +136,7 @@ impl StmtVisitor for Evaluator {
 // TODO: Replace unit tests with integration tests
 #[cfg(test)]
 mod tests {
-    use crate::{ast::expression::Identifier, evaluator::Object::*, parser::Parser};
+    use crate::{ast::Identifier, evaluator::Object::*, parser::Parser};
 
     use super::*;
     use pretty_assertions::assert_eq;

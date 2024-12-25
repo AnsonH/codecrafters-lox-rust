@@ -1,7 +1,7 @@
 use miette::Result;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{ast::expression::Identifier, error::RuntimeError};
+use crate::{ast::Identifier, error::RuntimeError};
 
 use super::object::Object;
 

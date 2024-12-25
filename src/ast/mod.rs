@@ -6,10 +6,11 @@ pub mod printer;
 pub mod statement;
 pub mod utils;
 
-// TODO: `pub use` more symbols
-pub use expression::{Expr, Literal};
-pub use operator::{BinaryOperator, UnaryOperator};
-pub use statement::Stmt;
+pub use self::expression::*;
+pub use self::operator::*;
+pub use self::statement::*;
+
+//////////////////////////////////////////////
 
 use crate::span::Span;
 
